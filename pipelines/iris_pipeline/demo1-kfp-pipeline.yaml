@@ -1,0 +1,387 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: sdg-example-pipeline-
+  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.22, pipelines.kubeflow.org/pipeline_compilation_time: '2024-11-22T09:11:46.513522',
+    pipelines.kubeflow.org/pipeline_spec: '{"name": "SDG_example_pipeline"}'}
+  labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.22}
+spec:
+  entrypoint: sdg-example-pipeline
+  templates:
+  - name: generation
+    container:
+      args: [--input-csv, /tmp/inputs/input_csv/data, --input-json, /tmp/inputs/input_json/data,
+        --output-csv, /tmp/outputs/output_csv/data]
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'git+https://edurbrito-cyber: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@github.com/edurbrito-cyber/synthguard.git'
+        || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'git+https://edurbrito-cyber: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@github.com/edurbrito-cyber/synthguard.git'
+        --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def generation(input_csv , input_json , output_csv ):
+            from synthguard.synthetic_data_generator import SyntheticDataGenerator
+            import synthguard.helper_functions as sd
+            metadata = sd.load_metadata(input_json)
+            data = sd.load_data_csv(input_csv)
+            syntheticDataGenerator = SyntheticDataGenerator(output_csv = output_csv, n_rows = 10000, method= "realistic")
+            generated_data = syntheticDataGenerator.generate_synthetic_data(metadata = metadata, processed_data = data)
+            print(generated_data)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Generation', description='')
+        _parser.add_argument("--input-csv", dest="input_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-json", dest="input_json", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-csv", dest="output_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = generation(**_parsed_args)
+      image: python:3.10
+    inputs:
+      artifacts:
+      - {name: input-output_csv, path: /tmp/inputs/input_csv/data}
+      - {name: preprocess-output_json, path: /tmp/inputs/input_json/data}
+    outputs:
+      artifacts:
+      - {name: generation-output_csv, path: /tmp/outputs/output_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-csv", {"inputPath": "input_csv"}, "--input-json", {"inputPath":
+          "input_json"}, "--output-csv", {"outputPath": "output_csv"}], "command":
+          ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet
+          --no-warn-script-location ''git+https://edurbrito-cyber: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@github.com/edurbrito-cyber/synthguard.git''
+          || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+          ''git+https://edurbrito-cyber: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@github.com/edurbrito-cyber/synthguard.git''
+          --user) && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef generation(input_csv , input_json
+          , output_csv ):\n    from synthguard.synthetic_data_generator import SyntheticDataGenerator\n    import
+          synthguard.helper_functions as sd\n    metadata = sd.load_metadata(input_json)\n    data
+          = sd.load_data_csv(input_csv)\n    syntheticDataGenerator = SyntheticDataGenerator(output_csv
+          = output_csv, n_rows = 10000, method= \"realistic\")\n    generated_data
+          = syntheticDataGenerator.generate_synthetic_data(metadata = metadata, processed_data
+          = data)\n    print(generated_data)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Generation'',
+          description='''')\n_parser.add_argument(\"--input-csv\", dest=\"input_csv\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-json\",
+          dest=\"input_json\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-csv\",
+          dest=\"output_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = generation(**_parsed_args)\n"], "image": "python:3.10"}}, "inputs": [{"name":
+          "input_csv", "type": "csv"}, {"name": "input_json", "type": "json"}], "name":
+          "Generation", "outputs": [{"name": "output_csv", "type": "csv"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: input
+    container:
+      args: [--output-csv, /tmp/outputs/output_csv/data]
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'git+https://edurbrito-cyber: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@github.com/edurbrito-cyber/synthguard.git'
+        || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'git+https://edurbrito-cyber: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@github.com/edurbrito-cyber/synthguard.git'
+        --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def input(output_csv ):
+            from synthguard.input_handler import InputHandler
+            import synthguard.helper_functions as sd
+            inputHandler = InputHandler()
+            inputHandler.load_data_from_url("https://gist.githubusercontent.com/netj/8836201/raw/6f9306ad21398ea43cba4f7d537619d0e07d5ae3/iris.csv")
+            input_data = inputHandler.data
+            sd.save_to_csv(input_data, output_csv)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Input', description='')
+        _parser.add_argument("--output-csv", dest="output_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = input(**_parsed_args)
+      image: python:3.10
+    outputs:
+      artifacts:
+      - {name: input-output_csv, path: /tmp/outputs/output_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--output-csv", {"outputPath": "output_csv"}], "command": ["sh",
+          "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+          ''git+https://edurbrito-cyber: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@github.com/edurbrito-cyber/synthguard.git''
+          || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+          ''git+https://edurbrito-cyber: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@github.com/edurbrito-cyber/synthguard.git''
+          --user) && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef input(output_csv ):\n    from
+          synthguard.input_handler import InputHandler\n    import synthguard.helper_functions
+          as sd\n    inputHandler = InputHandler()\n    inputHandler.load_data_from_url(\"https://gist.githubusercontent.com/netj/8836201/raw/6f9306ad21398ea43cba4f7d537619d0e07d5ae3/iris.csv\")\n    input_data
+          = inputHandler.data\n    sd.save_to_csv(input_data, output_csv)\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''Input'', description='''')\n_parser.add_argument(\"--output-csv\",
+          dest=\"output_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = input(**_parsed_args)\n"], "image": "python:3.10"}}, "name": "Input",
+          "outputs": [{"name": "output_csv", "type": "csv"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: preprocess
+    container:
+      args: [--input-csv, /tmp/inputs/input_csv/data, --output-json, /tmp/outputs/output_json/data]
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'git+https://edurbrito-cyber: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@github.com/edurbrito-cyber/synthguard.git'
+        || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'git+https://edurbrito-cyber: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@github.com/edurbrito-cyber/synthguard.git'
+        --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def preprocess(input_csv , output_json ):
+            from synthguard.data_preprocessor import DataPreprocessor
+            import synthguard.helper_functions as sd
+            input_data = sd.load_data_csv(input_csv)
+            dataPreprocessor = DataPreprocessor(data = input_data)
+            metadata = dataPreprocessor.extract_metadata()
+            sd.save_metadata(metadata, output_json)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Preprocess', description='')
+        _parser.add_argument("--input-csv", dest="input_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-json", dest="output_json", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = preprocess(**_parsed_args)
+      image: python:3.10
+    inputs:
+      artifacts:
+      - {name: input-output_csv, path: /tmp/inputs/input_csv/data}
+    outputs:
+      artifacts:
+      - {name: preprocess-output_json, path: /tmp/outputs/output_json/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-csv", {"inputPath": "input_csv"}, "--output-json", {"outputPath":
+          "output_json"}], "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''git+https://edurbrito-cyber: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@github.com/edurbrito-cyber/synthguard.git''
+          || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+          ''git+https://edurbrito-cyber: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@github.com/edurbrito-cyber/synthguard.git''
+          --user) && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef preprocess(input_csv , output_json
+          ):\n    from synthguard.data_preprocessor import DataPreprocessor\n    import
+          synthguard.helper_functions as sd\n    input_data = sd.load_data_csv(input_csv)\n    dataPreprocessor
+          = DataPreprocessor(data = input_data)\n    metadata = dataPreprocessor.extract_metadata()\n    sd.save_metadata(metadata,
+          output_json)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Preprocess'',
+          description='''')\n_parser.add_argument(\"--input-csv\", dest=\"input_csv\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-json\",
+          dest=\"output_json\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = preprocess(**_parsed_args)\n"], "image": "python:3.10"}}, "inputs": [{"name":
+          "input_csv", "type": "csv"}], "name": "Preprocess", "outputs": [{"name":
+          "output_json", "type": "json"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: qualityreport
+    container:
+      args: [--input-synth-csv, /tmp/inputs/input_synth_csv/data, --input-real-csv,
+        /tmp/inputs/input_real_csv/data, --input-metadata, /tmp/inputs/input_metadata/data,
+        --output-html, /tmp/outputs/output_html/data, '----output-paths', /tmp/outputs/mlpipeline_ui_metadata/data]
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'git+https://edurbrito-cyber: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@github.com/edurbrito-cyber/synthguard.git'
+        || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'git+https://edurbrito-cyber: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@github.com/edurbrito-cyber/synthguard.git'
+        --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def qualityReport(input_synth_csv , input_real_csv , input_metadata , output_html )    :
+            from synthguard.quality_report_generator import DataQualityEvaluator
+            import synthguard.helper_functions as sd
+            import json
+
+            with open(output_html, "w") as f:
+                f.write("<html><body>")  # Start the HTML document
+
+            processed_data = sd.load_data_csv(input_real_csv)
+            generated_data = sd.load_data_csv(input_synth_csv)
+            metadata = sd.load_metadata(input_metadata)
+
+            dataQualityEvaluator = DataQualityEvaluator(real_data = processed_data, synthetic_data = generated_data, metadata = metadata)
+            dataQualityEvaluator.evaluate_quality()
+            dataQualityEvaluator.save_plot_to_html(output_html)
+
+            with open(output_html, 'r') as file:
+                html_content = file.read()
+
+            metadata = {
+                'outputs': [{
+                    'type': 'web-app',
+                    'storage': 'inline',
+                    'source': html_content,
+                }]
+            }
+
+            from collections import namedtuple
+            visualization_output = namedtuple('VisualizationOutput', ['mlpipeline_ui_metadata'])
+            return visualization_output(json.dumps(metadata))
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='QualityReport', description='')
+        _parser.add_argument("--input-synth-csv", dest="input_synth_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-real-csv", dest="input_real_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-metadata", dest="input_metadata", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-html", dest="output_html", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("----output-paths", dest="_output_paths", type=str, nargs=1)
+        _parsed_args = vars(_parser.parse_args())
+        _output_files = _parsed_args.pop("_output_paths", [])
+
+        _outputs = qualityReport(**_parsed_args)
+
+        _output_serializers = [
+            str,
+
+        ]
+
+        import os
+        for idx, output_file in enumerate(_output_files):
+            try:
+                os.makedirs(os.path.dirname(output_file))
+            except OSError:
+                pass
+            with open(output_file, 'w') as f:
+                f.write(_output_serializers[idx](_outputs[idx]))
+      image: python:3.10
+    inputs:
+      artifacts:
+      - {name: preprocess-output_json, path: /tmp/inputs/input_metadata/data}
+      - {name: input-output_csv, path: /tmp/inputs/input_real_csv/data}
+      - {name: generation-output_csv, path: /tmp/inputs/input_synth_csv/data}
+    outputs:
+      artifacts:
+      - {name: mlpipeline-ui-metadata, path: /tmp/outputs/mlpipeline_ui_metadata/data}
+      - {name: qualityreport-output_html, path: /tmp/outputs/output_html/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-synth-csv", {"inputPath": "input_synth_csv"}, "--input-real-csv",
+          {"inputPath": "input_real_csv"}, "--input-metadata", {"inputPath": "input_metadata"},
+          "--output-html", {"outputPath": "output_html"}, "----output-paths", {"outputPath":
+          "mlpipeline_ui_metadata"}], "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''git+https://edurbrito-cyber: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@github.com/edurbrito-cyber/synthguard.git''
+          || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+          ''git+https://edurbrito-cyber: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@github.com/edurbrito-cyber/synthguard.git''
+          --user) && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef qualityReport(input_synth_csv
+          , input_real_csv , input_metadata , output_html )    :\n    from synthguard.quality_report_generator
+          import DataQualityEvaluator\n    import synthguard.helper_functions as sd\n    import
+          json\n\n    with open(output_html, \"w\") as f:\n        f.write(\"<html><body>\")  #
+          Start the HTML document\n\n    processed_data = sd.load_data_csv(input_real_csv)\n    generated_data
+          = sd.load_data_csv(input_synth_csv)\n    metadata = sd.load_metadata(input_metadata)\n\n    dataQualityEvaluator
+          = DataQualityEvaluator(real_data = processed_data, synthetic_data = generated_data,
+          metadata = metadata)\n    dataQualityEvaluator.evaluate_quality()\n    dataQualityEvaluator.save_plot_to_html(output_html)\n\n    with
+          open(output_html, ''r'') as file:\n        html_content = file.read()\n\n    metadata
+          = {\n        ''outputs'': [{\n            ''type'': ''web-app'',\n            ''storage'':
+          ''inline'',\n            ''source'': html_content,\n        }]\n    }\n\n    from
+          collections import namedtuple\n    visualization_output = namedtuple(''VisualizationOutput'',
+          [''mlpipeline_ui_metadata''])\n    return visualization_output(json.dumps(metadata))\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''QualityReport'', description='''')\n_parser.add_argument(\"--input-synth-csv\",
+          dest=\"input_synth_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-real-csv\",
+          dest=\"input_real_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-metadata\",
+          dest=\"input_metadata\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-html\",
+          dest=\"output_html\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\", dest=\"_output_paths\",
+          type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+          = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = qualityReport(**_parsed_args)\n\n_output_serializers
+          = [\n    str,\n\n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+          OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+          "image": "python:3.10"}}, "inputs": [{"name": "input_synth_csv", "type":
+          "csv"}, {"name": "input_real_csv", "type": "csv"}, {"name": "input_metadata",
+          "type": "json"}], "name": "QualityReport", "outputs": [{"name": "output_html",
+          "type": "html"}, {"name": "mlpipeline_ui_metadata", "type": "UI_metadata"}]}',
+        pipelines.kubeflow.org/component_ref: '{}'}
+  - name: sdg-example-pipeline
+    dag:
+      tasks:
+      - name: generation
+        template: generation
+        dependencies: [input, preprocess]
+        arguments:
+          artifacts:
+          - {name: input-output_csv, from: '{{tasks.input.outputs.artifacts.input-output_csv}}'}
+          - {name: preprocess-output_json, from: '{{tasks.preprocess.outputs.artifacts.preprocess-output_json}}'}
+      - {name: input, template: input}
+      - name: preprocess
+        template: preprocess
+        dependencies: [input]
+        arguments:
+          artifacts:
+          - {name: input-output_csv, from: '{{tasks.input.outputs.artifacts.input-output_csv}}'}
+      - name: qualityreport
+        template: qualityreport
+        dependencies: [generation, input, preprocess]
+        arguments:
+          artifacts:
+          - {name: generation-output_csv, from: '{{tasks.generation.outputs.artifacts.generation-output_csv}}'}
+          - {name: input-output_csv, from: '{{tasks.input.outputs.artifacts.input-output_csv}}'}
+          - {name: preprocess-output_json, from: '{{tasks.preprocess.outputs.artifacts.preprocess-output_json}}'}
+  arguments:
+    parameters: []
+  serviceAccountName: pipeline-runner

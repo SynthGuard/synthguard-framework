@@ -1,0 +1,37 @@
+{
+  "_index": "box2m-202212-teadal",
+  "_type": "_doc",
+  "_id": "7zKeQoUBJLY0T6iWGQ8Q",
+  "_version": 1,
+  "_score": null,
+  "_source": {
+    "transactionId": "c2e1d69a-0200-430f-bb58-ccb726d570dd",
+    "timestamp": "2022-12-24T05:32:15.4327118Z",
+    "timestampLocal": "2022-12-24T07:32:15.4327118",
+    "customerKey": "teadal",
+    "customerName": "TEADAL",
+    "locationKey": "lab",
+    "locationName": "BOX2M Lab",
+    "deviceKey": "l2321bnokl",
+    "deviceName": "new device TBC",
+    "deviceVendor": "BOX2M-M0",
+    "circuitKey": "o6ge82323r",
+    "circuitName": "Circuit 1",
+    "parameterUsedKey": "nbnx712412wpqcrr3ro2",
+    "sensorVendor": "Lovato",
+    "sensorModel": "DMG110",
+    "channel": 2,
+    "name": "Voltage L1N",
+    "raw": "23396",
+    "value": 233.96,
+    "unit": "V"
+  },
+  "fields": {
+    "timestampLocal": [
+      "2022-12-24T07:32:15.432Z"
+    ],
+    "timestamp": [
+      "2022-12-24T05:32:15.432Z"
+    ]
+  }
+}

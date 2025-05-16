@@ -1,0 +1,438 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: pl-
+  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.0, pipelines.kubeflow.org/pipeline_compilation_time: '2024-08-05T11:27:55.318618',
+    pipelines.kubeflow.org/pipeline_spec: '{"inputs": [{"default": "1000", "name":
+      "n_samples", "optional": true, "type": "Integer"}], "name": "Pl"}'}
+  labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.0}
+spec:
+  entrypoint: pl
+  templates:
+  - name: data-load
+    podSpecPatch: '{"runtimeClassName":"kata-qemu"}'
+    container:
+      args: [--dataset-name, titanic, --output-csv, /tmp/outputs/output_csv/data]
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'bnlearn' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet
+        --no-warn-script-location 'bnlearn' --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def data_load(output_csv, dataset_name = 'titanic'):
+            import bnlearn as bn
+
+            #Load data
+            df = bn.import_example(dataset_name)
+
+            dfhot, dfnum = bn.df2onehot(df)
+            df = dfnum
+
+            #TODO If some columns are with continues data, discretize that data
+
+            print(df.head())
+            print(df.describe())
+            df.to_csv(output_csv)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Data load', description='')
+        _parser.add_argument("--dataset-name", dest="dataset_name", type=str, required=False, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-csv", dest="output_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = data_load(**_parsed_args)
+      image: python:3.9
+    outputs:
+      artifacts:
+      - {name: data-load-output_csv, path: /tmp/outputs/output_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.0
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": [{"if": {"cond": {"isPresent": "dataset_name"}, "then": ["--dataset-name",
+          {"inputValue": "dataset_name"}]}}, "--output-csv", {"outputPath": "output_csv"}],
+          "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip
+          install --quiet --no-warn-script-location ''bnlearn'' || PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''bnlearn'' --user)
+          && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\"
+          > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef data_load(output_csv, dataset_name = ''titanic''):\n    import
+          bnlearn as bn\n\n    #Load data\n    df = bn.import_example(dataset_name)\n\n    dfhot,
+          dfnum = bn.df2onehot(df)\n    df = dfnum\n\n    #TODO If some columns are
+          with continues data, discretize that data\n\n    print(df.head())\n    print(df.describe())\n    df.to_csv(output_csv)\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''Data load'', description='''')\n_parser.add_argument(\"--dataset-name\",
+          dest=\"dataset_name\", type=str, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-csv\",
+          dest=\"output_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = data_load(**_parsed_args)\n"], "image": "python:3.9"}}, "inputs": [{"default":
+          "titanic", "name": "dataset_name", "optional": true, "type": "String"}],
+          "name": "Data load", "outputs": [{"name": "output_csv", "type": "csv"}]}',
+        pipelines.kubeflow.org/component_ref: '{}', pipelines.kubeflow.org/arguments.parameters: '{"dataset_name":
+          "titanic"}'}
+  - name: inference
+    container:
+      args: [--input-model, /tmp/inputs/input_model/data, --inference, '{"evidence":
+          {"Pclass": 1}, "variables": ["Survived", "Sex"]}']
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'bnlearn' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet
+        --no-warn-script-location 'bnlearn' --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def inference(input_model, inference={'variables':['Survived', 'Sex'], 'evidence':{'Pclass':1}}):
+            import bnlearn as bn
+            import pickle
+
+            with open(input_model, 'rb') as file:
+                model = pickle.load(file)
+
+            inf = bn.inference.fit(model, variables=inference['variables'], evidence=inference['evidence'])
+
+        import json
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Inference', description='')
+        _parser.add_argument("--input-model", dest="input_model", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--inference", dest="inference", type=json.loads, required=False, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = inference(**_parsed_args)
+      image: python:3.9
+    inputs:
+      artifacts:
+      - {name: parameter-learning-output_model, path: /tmp/inputs/input_model/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.0
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-model", {"inputPath": "input_model"}, {"if": {"cond":
+          {"isPresent": "inference"}, "then": ["--inference", {"inputValue": "inference"}]}}],
+          "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip
+          install --quiet --no-warn-script-location ''bnlearn'' || PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''bnlearn'' --user)
+          && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\"
+          > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n", "def inference(input_model,
+          inference={''variables'':[''Survived'', ''Sex''], ''evidence'':{''Pclass'':1}}):\n    import
+          bnlearn as bn\n    import pickle\n\n    with open(input_model, ''rb'') as
+          file:\n        model = pickle.load(file)\n\n    inf = bn.inference.fit(model,
+          variables=inference[''variables''], evidence=inference[''evidence''])\n\nimport
+          json\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Inference'',
+          description='''')\n_parser.add_argument(\"--input-model\", dest=\"input_model\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--inference\",
+          dest=\"inference\", type=json.loads, required=False, default=argparse.SUPPRESS)\n_parsed_args
+          = vars(_parser.parse_args())\n\n_outputs = inference(**_parsed_args)\n"],
+          "image": "python:3.9"}}, "inputs": [{"name": "input_model", "type": "pkl"},
+          {"default": "{\"evidence\": {\"Pclass\": 1}, \"variables\": [\"Survived\",
+          \"Sex\"]}", "name": "inference", "optional": true, "type": "JsonObject"}],
+          "name": "Inference"}', pipelines.kubeflow.org/component_ref: '{}', pipelines.kubeflow.org/arguments.parameters: '{"inference":
+          "{\"evidence\": {\"Pclass\": 1}, \"variables\": [\"Survived\", \"Sex\"]}"}'}
+  - name: parameter-learning
+    container:
+      args: [--input-model, /tmp/inputs/input_model/data, --input-df, /tmp/inputs/input_df/data,
+        --output-model, /tmp/outputs/output_model/data]
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'bnlearn' 'pandas' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install
+        --quiet --no-warn-script-location 'bnlearn' 'pandas' --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def parameter_learning(input_model, input_df, output_model):
+            import bnlearn as bn
+            import pickle
+            import pandas as pd
+
+            with open(input_model, 'rb') as file:
+                model = pickle.load(file)
+
+            df = pd.read_csv(input_df)
+
+            updated_model = bn.parameter_learning.fit(model, df)
+
+            with open(output_model, 'wb') as file:
+                pickle.dump(updated_model, file)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Parameter learning', description='')
+        _parser.add_argument("--input-model", dest="input_model", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-df", dest="input_df", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-model", dest="output_model", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = parameter_learning(**_parsed_args)
+      image: python:3.9
+    inputs:
+      artifacts:
+      - {name: structure-learning-output_df, path: /tmp/inputs/input_df/data}
+      - {name: structure-learning-output_model, path: /tmp/inputs/input_model/data}
+    outputs:
+      artifacts:
+      - {name: parameter-learning-output_model, path: /tmp/outputs/output_model/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.0
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-model", {"inputPath": "input_model"}, "--input-df", {"inputPath":
+          "input_df"}, "--output-model", {"outputPath": "output_model"}], "command":
+          ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet
+          --no-warn-script-location ''bnlearn'' ''pandas'' || PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''bnlearn'' ''pandas''
+          --user) && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef parameter_learning(input_model,
+          input_df, output_model):\n    import bnlearn as bn\n    import pickle\n    import
+          pandas as pd\n\n    with open(input_model, ''rb'') as file:\n        model
+          = pickle.load(file)\n\n    df = pd.read_csv(input_df)\n\n    updated_model
+          = bn.parameter_learning.fit(model, df)\n\n    with open(output_model, ''wb'')
+          as file:\n        pickle.dump(updated_model, file)\n\nimport argparse\n_parser
+          = argparse.ArgumentParser(prog=''Parameter learning'', description='''')\n_parser.add_argument(\"--input-model\",
+          dest=\"input_model\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-df\",
+          dest=\"input_df\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-model\",
+          dest=\"output_model\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = parameter_learning(**_parsed_args)\n"], "image": "python:3.9"}}, "inputs":
+          [{"name": "input_model", "type": "pkl"}, {"name": "input_df", "type": "csv"}],
+          "name": "Parameter learning", "outputs": [{"name": "output_model", "type":
+          "pkl"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: pl
+    inputs:
+      parameters:
+      - {name: n_samples}
+    dag:
+      tasks:
+      - {name: data-load, template: data-load}
+      - name: inference
+        template: inference
+        dependencies: [parameter-learning]
+        arguments:
+          artifacts:
+          - {name: parameter-learning-output_model, from: '{{tasks.parameter-learning.outputs.artifacts.parameter-learning-output_model}}'}
+      - name: parameter-learning
+        template: parameter-learning
+        dependencies: [structure-learning]
+        arguments:
+          artifacts:
+          - {name: structure-learning-output_df, from: '{{tasks.structure-learning.outputs.artifacts.structure-learning-output_df}}'}
+          - {name: structure-learning-output_model, from: '{{tasks.structure-learning.outputs.artifacts.structure-learning-output_model}}'}
+      - name: sampling
+        template: sampling
+        dependencies: [parameter-learning]
+        arguments:
+          parameters:
+          - {name: n_samples, value: '{{inputs.parameters.n_samples}}'}
+          artifacts:
+          - {name: parameter-learning-output_model, from: '{{tasks.parameter-learning.outputs.artifacts.parameter-learning-output_model}}'}
+      - name: structure-learning
+        template: structure-learning
+        dependencies: [data-load]
+        arguments:
+          artifacts:
+          - {name: data-load-output_csv, from: '{{tasks.data-load.outputs.artifacts.data-load-output_csv}}'}
+  - name: sampling
+    container:
+      args: [--input-model, /tmp/inputs/input_model/data, --n-sample, '{{inputs.parameters.n_samples}}',
+        --methodtype, bayes, --output-model, /tmp/outputs/output_model/data]
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'bnlearn' 'pandas' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install
+        --quiet --no-warn-script-location 'bnlearn' 'pandas' --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def sampling(input_model, n_sample, output_model, methodtype='bayes'):
+            import bnlearn as bn
+            import pandas as pd
+            import pickle
+
+            with open(input_model, 'rb') as file:
+                model = pickle.load(file)
+
+            df = bn.sampling(model, n=n_sample, methodtype=methodtype)
+            df.head()
+            df.to_csv(output_model)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Sampling', description='')
+        _parser.add_argument("--input-model", dest="input_model", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--n-sample", dest="n_sample", type=int, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--methodtype", dest="methodtype", type=str, required=False, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-model", dest="output_model", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = sampling(**_parsed_args)
+      image: python:3.9
+    inputs:
+      parameters:
+      - {name: n_samples}
+      artifacts:
+      - {name: parameter-learning-output_model, path: /tmp/inputs/input_model/data}
+    outputs:
+      artifacts:
+      - {name: sampling-output_model, path: /tmp/outputs/output_model/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.0
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-model", {"inputPath": "input_model"}, "--n-sample", {"inputValue":
+          "n_sample"}, {"if": {"cond": {"isPresent": "methodtype"}, "then": ["--methodtype",
+          {"inputValue": "methodtype"}]}}, "--output-model", {"outputPath": "output_model"}],
+          "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip
+          install --quiet --no-warn-script-location ''bnlearn'' ''pandas'' || PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''bnlearn'' ''pandas''
+          --user) && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef sampling(input_model, n_sample,
+          output_model, methodtype=''bayes''):\n    import bnlearn as bn\n    import
+          pandas as pd\n    import pickle\n\n    with open(input_model, ''rb'') as
+          file:\n        model = pickle.load(file)\n\n    df = bn.sampling(model,
+          n=n_sample, methodtype=methodtype)\n    df.head()\n    df.to_csv(output_model)\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''Sampling'', description='''')\n_parser.add_argument(\"--input-model\",
+          dest=\"input_model\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--n-sample\",
+          dest=\"n_sample\", type=int, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--methodtype\",
+          dest=\"methodtype\", type=str, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-model\",
+          dest=\"output_model\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = sampling(**_parsed_args)\n"], "image": "python:3.9"}}, "inputs": [{"name":
+          "input_model", "type": "pkl"}, {"name": "n_sample", "type": "Integer"},
+          {"default": "bayes", "name": "methodtype", "optional": true}], "name": "Sampling",
+          "outputs": [{"name": "output_model", "type": "csv"}]}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"methodtype": "bayes", "n_sample":
+          "{{inputs.parameters.n_samples}}"}'}
+  - name: structure-learning
+    container:
+      args: [--input-csv, /tmp/inputs/input_csv/data, --edges, '[]', --output-df,
+        /tmp/outputs/output_df/data, --output-model, /tmp/outputs/output_model/data]
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'bnlearn' 'pandas' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install
+        --quiet --no-warn-script-location 'bnlearn' 'pandas' --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef structure_learning(input_csv, \n                       output_df, \n\
+        \                       output_model, \n                       edges = []):\n\
+        \    import bnlearn as bn\n    import pandas as pd\n    import pickle\n\n\
+        \    if edges:\n        DAG = bn.make_DAG(edges)\n        bn.plot(DAG)\n \
+        \       return {\n            'df':df,\n            'model': DAG\n       \
+        \ }\n\n    #TODO Compare different structure learning algos\n\n    df = pd.read_csv(input_csv)\n\
+        \n    model = bn.structure_learning.fit(df)\n    G = bn.plot(model, interactive=False)\n\
+        \n    model = bn.independence_test(model, df, test='chi_square', alpha=0.05,\
+        \ prune=True)\n    bn.plot(model, interactive=False, pos=G['pos'])\n\n   \
+        \ df.to_csv(output_df)\n\n    with open(output_model, 'wb') as file:\n   \
+        \     pickle.dump(model, file)\n\nimport json\nimport argparse\n_parser =\
+        \ argparse.ArgumentParser(prog='Structure learning', description='')\n_parser.add_argument(\"\
+        --input-csv\", dest=\"input_csv\", type=str, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--edges\", dest=\"edges\", type=json.loads, required=False,\
+        \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-df\", dest=\"\
+        output_df\", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--output-model\", dest=\"output_model\", type=_make_parent_dirs_and_return_path,\
+        \ required=True, default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\
+        \n_outputs = structure_learning(**_parsed_args)\n"
+      image: python:3.9
+    inputs:
+      artifacts:
+      - {name: data-load-output_csv, path: /tmp/inputs/input_csv/data}
+    outputs:
+      artifacts:
+      - {name: structure-learning-output_df, path: /tmp/outputs/output_df/data}
+      - {name: structure-learning-output_model, path: /tmp/outputs/output_model/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.0
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-csv", {"inputPath": "input_csv"}, {"if": {"cond": {"isPresent":
+          "edges"}, "then": ["--edges", {"inputValue": "edges"}]}}, "--output-df",
+          {"outputPath": "output_df"}, "--output-model", {"outputPath": "output_model"}],
+          "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip
+          install --quiet --no-warn-script-location ''bnlearn'' ''pandas'' || PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''bnlearn'' ''pandas''
+          --user) && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef structure_learning(input_csv,
+          \n                       output_df, \n                       output_model,
+          \n                       edges = []):\n    import bnlearn as bn\n    import
+          pandas as pd\n    import pickle\n\n    if edges:\n        DAG = bn.make_DAG(edges)\n        bn.plot(DAG)\n        return
+          {\n            ''df'':df,\n            ''model'': DAG\n        }\n\n    #TODO
+          Compare different structure learning algos\n\n    df = pd.read_csv(input_csv)\n\n    model
+          = bn.structure_learning.fit(df)\n    G = bn.plot(model, interactive=False)\n\n    model
+          = bn.independence_test(model, df, test=''chi_square'', alpha=0.05, prune=True)\n    bn.plot(model,
+          interactive=False, pos=G[''pos''])\n\n    df.to_csv(output_df)\n\n    with
+          open(output_model, ''wb'') as file:\n        pickle.dump(model, file)\n\nimport
+          json\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Structure
+          learning'', description='''')\n_parser.add_argument(\"--input-csv\", dest=\"input_csv\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--edges\",
+          dest=\"edges\", type=json.loads, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-df\",
+          dest=\"output_df\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-model\", dest=\"output_model\",
+          type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)\n_parsed_args
+          = vars(_parser.parse_args())\n\n_outputs = structure_learning(**_parsed_args)\n"],
+          "image": "python:3.9"}}, "inputs": [{"name": "input_csv", "type": "csv"},
+          {"default": "[]", "name": "edges", "optional": true, "type": "JsonArray"}],
+          "name": "Structure learning", "outputs": [{"name": "output_df", "type":
+          "csv"}, {"name": "output_model", "type": "pkl"}]}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"edges": "[]"}'}
+  arguments:
+    parameters:
+    - {name: n_samples, value: '1000'}
+  serviceAccountName: pipeline-runner

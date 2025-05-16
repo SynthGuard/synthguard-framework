@@ -1,0 +1,644 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  annotations:
+    pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+    pipelines.kubeflow.org/pipeline_compilation_time: '2025-04-24T15:58:49.550531'
+    pipelines.kubeflow.org/pipeline_spec: '{"name": "test_pipeline_100k"}'
+  generateName: test-pipeline-100k-
+  labels:
+    pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+spec:
+  arguments:
+    parameters: []
+  entrypoint: test-pipeline-100k
+  imagePullSecrets:
+  - name: regcred
+  serviceAccountName: pipeline-runner
+  templates:
+  - container:
+      args:
+      - --input-synth-csv
+      - /tmp/inputs/input_synth_csv/data
+      - --input-real-csv
+      - /tmp/inputs/input_real_csv/data
+      - --input-json
+      - /tmp/inputs/input_json/data
+      - --output-html
+      - /tmp/outputs/output_html/data
+      - '----output-paths'
+      - /tmp/outputs/mlpipeline_ui_metadata/data
+      command:
+      - sh
+      - -ec
+      - 'program_path=$(mktemp)
+
+        printf "%s" "$0" > "$program_path"
+
+        python3 -u "$program_path" "$@"
+
+        '
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef diagnosticReport(input_synth_csv, input_real_csv, input_json, output_html):\n\
+        \    import time\n    start_time = time.time()\n\n    import synthguard.helper_functions\
+        \ as sd\n    import json\n\n    with open(output_html, \"w\") as f:\n    \
+        \    f.write(\"<html><body>\")  # Start the HTML document\n\n    #Component\
+        \ logic\n    from synthguard.diagnostic_report_generator import DiagnosticEvaluator\
+        \    \n    # from diagnostic_report_generator import DiagnosticEvaluator\n\
+        \    real_data = sd.load_data_csv(input_real_csv)\n    synthetic_data = sd.load_data_csv(input_synth_csv)\n\
+        \    metadata = sd.load_metadata(input_json)\n    synthetic_data_type = 'realistic'\n\
+        \n    diagnosticReportGenerator = DiagnosticEvaluator(real_data = real_data,\
+        \ synthetic_data = synthetic_data, metadata = metadata, method=synthetic_data_type)\n\
+        \    diagnosticReportGenerator.run_diagnostic_realistic()\n    diagnosticReportGenerator.plot_diagnostic_report_realistic()\n\
+        \    diagnosticReportGenerator.save_plot_to_html(output_html)\n\n    # Read\
+        \ the HTML content for UI metadata\n    with open(output_html, 'r') as file:\n\
+        \        html_content = file.read()\n\n    metadata = {\n        'outputs':\
+        \ [{\n            'type': 'web-app',\n            'storage': 'inline',\n \
+        \           'source': html_content,\n        }]\n    }\n\n    from collections\
+        \ import namedtuple\n    visualization_output = namedtuple('VisualizationOutput',\
+        \ ['mlpipeline_ui_metadata'])\n\n    end_time = time.time()\n    duration\
+        \ = (end_time - start_time) / 60\n    print(f\"Component completed in {duration:.2f}\
+        \ minutes.\")\n\n    return visualization_output(json.dumps(metadata))\n\n\
+        import argparse\n_parser = argparse.ArgumentParser(prog='DiagnosticReport',\
+        \ description='')\n_parser.add_argument(\"--input-synth-csv\", dest=\"input_synth_csv\"\
+        , type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+        --input-real-csv\", dest=\"input_real_csv\", type=str, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--input-json\", dest=\"input_json\", type=str, required=True,\
+        \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-html\", dest=\"\
+        output_html\", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"----output-paths\", dest=\"_output_paths\", type=str,\
+        \ nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files = _parsed_args.pop(\"\
+        _output_paths\", [])\n\n_outputs = diagnosticReport(**_parsed_args)\n\n_output_serializers\
+        \ = [\n    str,\n\n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n\
+        \    try:\n        os.makedirs(os.path.dirname(output_file))\n    except OSError:\n\
+        \        pass\n    with open(output_file, 'w') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"
+      image: gitlab.cyber.ee:5050/exai/data-synthesis-workflow-engine:latest
+    inputs:
+      artifacts:
+      - name: preprocess-output_json
+        path: /tmp/inputs/input_json/data
+      - name: generation-output_csv
+        path: /tmp/inputs/input_real_csv/data
+      - name: input-output_csv
+        path: /tmp/inputs/input_synth_csv/data
+    metadata:
+      annotations:
+        pipelines.kubeflow.org/component_ref: '{}'
+        pipelines.kubeflow.org/component_spec: '{"implementation": {"container": {"args":
+          ["--input-synth-csv", {"inputPath": "input_synth_csv"}, "--input-real-csv",
+          {"inputPath": "input_real_csv"}, "--input-json", {"inputPath": "input_json"},
+          "--output-html", {"outputPath": "output_html"}, "----output-paths", {"outputPath":
+          "mlpipeline_ui_metadata"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef diagnosticReport(input_synth_csv,
+          input_real_csv, input_json, output_html):\n    import time\n    start_time
+          = time.time()\n\n    import synthguard.helper_functions as sd\n    import
+          json\n\n    with open(output_html, \"w\") as f:\n        f.write(\"<html><body>\")  #
+          Start the HTML document\n\n    #Component logic\n    from synthguard.diagnostic_report_generator
+          import DiagnosticEvaluator    \n    # from diagnostic_report_generator import
+          DiagnosticEvaluator\n    real_data = sd.load_data_csv(input_real_csv)\n    synthetic_data
+          = sd.load_data_csv(input_synth_csv)\n    metadata = sd.load_metadata(input_json)\n    synthetic_data_type
+          = ''realistic''\n\n    diagnosticReportGenerator = DiagnosticEvaluator(real_data
+          = real_data, synthetic_data = synthetic_data, metadata = metadata, method=synthetic_data_type)\n    diagnosticReportGenerator.run_diagnostic_realistic()\n    diagnosticReportGenerator.plot_diagnostic_report_realistic()\n    diagnosticReportGenerator.save_plot_to_html(output_html)\n\n    #
+          Read the HTML content for UI metadata\n    with open(output_html, ''r'')
+          as file:\n        html_content = file.read()\n\n    metadata = {\n        ''outputs'':
+          [{\n            ''type'': ''web-app'',\n            ''storage'': ''inline'',\n            ''source'':
+          html_content,\n        }]\n    }\n\n    from collections import namedtuple\n    visualization_output
+          = namedtuple(''VisualizationOutput'', [''mlpipeline_ui_metadata''])\n\n    end_time
+          = time.time()\n    duration = (end_time - start_time) / 60\n    print(f\"Component
+          completed in {duration:.2f} minutes.\")\n\n    return visualization_output(json.dumps(metadata))\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''DiagnosticReport'', description='''')\n_parser.add_argument(\"--input-synth-csv\",
+          dest=\"input_synth_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-real-csv\",
+          dest=\"input_real_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-json\",
+          dest=\"input_json\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-html\",
+          dest=\"output_html\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\", dest=\"_output_paths\",
+          type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+          = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = diagnosticReport(**_parsed_args)\n\n_output_serializers
+          = [\n    str,\n\n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+          OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+          "image": "gitlab.cyber.ee:5050/exai/data-synthesis-workflow-engine:latest"}},
+          "inputs": [{"name": "input_synth_csv", "type": "csv"}, {"name": "input_real_csv",
+          "type": "csv"}, {"name": "input_json", "type": "json"}], "name": "DiagnosticReport",
+          "outputs": [{"name": "output_html", "type": "html"}, {"name": "mlpipeline_ui_metadata",
+          "type": "UI_metadata"}]}'
+      labels:
+        pipelines.kubeflow.org/enable_caching: 'true'
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+    name: diagnosticreport
+    outputs:
+      artifacts:
+      - name: mlpipeline-ui-metadata
+        path: /tmp/outputs/mlpipeline_ui_metadata/data
+      - name: diagnosticreport-output_html
+        path: /tmp/outputs/output_html/data
+  - container:
+      args:
+      - --input-csv
+      - /tmp/inputs/input_csv/data
+      - --input-json
+      - /tmp/inputs/input_json/data
+      - --output-csv
+      - /tmp/outputs/output_csv/data
+      command:
+      - sh
+      - -ec
+      - 'program_path=$(mktemp)
+
+        printf "%s" "$0" > "$program_path"
+
+        python3 -u "$program_path" "$@"
+
+        '
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef generation(input_csv, input_json, output_csv):\n    import time\n  \
+        \  start_time = time.time()\n    import synthguard.helper_functions as sd\n\
+        \    from synthguard.synthetic_data_generator import SyntheticDataGenerator\n\
+        \n    # Parameters\n    n_rows = 100000\n    epochs = 32\n    locales = 'ee_ET'\n\
+        \    synthetic_data_type = 'realistic'\n\n    #Component logic\n    metadata\
+        \ = sd.load_metadata(input_json)\n    real_data = sd.load_data_csv(input_csv)\n\
+        \n    syntheticDataGenerator = SyntheticDataGenerator(output_csv = output_csv,\
+        \ n_rows = n_rows, method= synthetic_data_type, locales=locales)\n    generated_data\
+        \ = syntheticDataGenerator.generate_synthetic_data(metadata = metadata, processed_data\
+        \ = real_data, Nepochs=epochs)\n\n    end_time = time.time()\n    duration\
+        \ = (end_time - start_time) / 60\n    print(f\"Component completed in {duration:.2f}\
+        \ minutes.\")\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Generation',\
+        \ description='')\n_parser.add_argument(\"--input-csv\", dest=\"input_csv\"\
+        , type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+        --input-json\", dest=\"input_json\", type=str, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--output-csv\", dest=\"output_csv\", type=_make_parent_dirs_and_return_path,\
+        \ required=True, default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\
+        \n_outputs = generation(**_parsed_args)\n"
+      image: gitlab.cyber.ee:5050/exai/data-synthesis-workflow-engine:latest
+    inputs:
+      artifacts:
+      - name: input-output_csv
+        path: /tmp/inputs/input_csv/data
+      - name: preprocess-output_json
+        path: /tmp/inputs/input_json/data
+    metadata:
+      annotations:
+        pipelines.kubeflow.org/component_ref: '{}'
+        pipelines.kubeflow.org/component_spec: '{"implementation": {"container": {"args":
+          ["--input-csv", {"inputPath": "input_csv"}, "--input-json", {"inputPath":
+          "input_json"}, "--output-csv", {"outputPath": "output_csv"}], "command":
+          ["sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef generation(input_csv, input_json, output_csv):\n    import
+          time\n    start_time = time.time()\n    import synthguard.helper_functions
+          as sd\n    from synthguard.synthetic_data_generator import SyntheticDataGenerator\n\n    #
+          Parameters\n    n_rows = 100000\n    epochs = 32\n    locales = ''ee_ET''\n    synthetic_data_type
+          = ''realistic''\n\n    #Component logic\n    metadata = sd.load_metadata(input_json)\n    real_data
+          = sd.load_data_csv(input_csv)\n\n    syntheticDataGenerator = SyntheticDataGenerator(output_csv
+          = output_csv, n_rows = n_rows, method= synthetic_data_type, locales=locales)\n    generated_data
+          = syntheticDataGenerator.generate_synthetic_data(metadata = metadata, processed_data
+          = real_data, Nepochs=epochs)\n\n    end_time = time.time()\n    duration
+          = (end_time - start_time) / 60\n    print(f\"Component completed in {duration:.2f}
+          minutes.\")\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Generation'',
+          description='''')\n_parser.add_argument(\"--input-csv\", dest=\"input_csv\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-json\",
+          dest=\"input_json\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-csv\",
+          dest=\"output_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = generation(**_parsed_args)\n"], "image": "gitlab.cyber.ee:5050/exai/data-synthesis-workflow-engine:latest"}},
+          "inputs": [{"name": "input_csv", "type": "csv"}, {"name": "input_json",
+          "type": "json"}], "name": "Generation", "outputs": [{"name": "output_csv",
+          "type": "csv"}]}'
+      labels:
+        pipelines.kubeflow.org/enable_caching: 'true'
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+    name: generation
+    outputs:
+      artifacts:
+      - name: generation-output_csv
+        path: /tmp/outputs/output_csv/data
+  - container:
+      args:
+      - --output-csv
+      - /tmp/outputs/output_csv/data
+      command:
+      - sh
+      - -ec
+      - 'program_path=$(mktemp)
+
+        printf "%s" "$0" > "$program_path"
+
+        python3 -u "$program_path" "$@"
+
+        '
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef input(output_csv):\n\n\timport time\n\tstart_time = time.time()\n\n\t\
+        import synthguard.helper_functions as sd\n\tfrom synthguard.input_handler\
+        \ import InputHandler\n\tprint('Started loading data')\n\t#Component logic\n\
+        \tinputHandler = InputHandler()\n\tinputHandler.load_data_csv(\"https://opendata.smit.ee/ppa/csv/elamislubade_taotlused.csv\"\
+        , n_rows=100000)\n\tprint('Finished loading data')\n\tinput_data = inputHandler.data\n\
+        \tsd.save_to_csv(input_data, output_csv)\n\n\tend_time = time.time()\n\tduration\
+        \ = (end_time - start_time) / 60\n\tprint(f\"Component completed in {duration:.2f}\
+        \ minutes.\")\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Input',\
+        \ description='')\n_parser.add_argument(\"--output-csv\", dest=\"output_csv\"\
+        , type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)\n\
+        _parsed_args = vars(_parser.parse_args())\n\n_outputs = input(**_parsed_args)\n"
+      image: gitlab.cyber.ee:5050/exai/data-synthesis-workflow-engine:latest
+    metadata:
+      annotations:
+        pipelines.kubeflow.org/component_ref: '{}'
+        pipelines.kubeflow.org/component_spec: '{"implementation": {"container": {"args":
+          ["--output-csv", {"outputPath": "output_csv"}], "command": ["sh", "-ec",
+          "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef input(output_csv):\n\n\timport time\n\tstart_time = time.time()\n\n\timport
+          synthguard.helper_functions as sd\n\tfrom synthguard.input_handler import
+          InputHandler\n\tprint(''Started loading data'')\n\t#Component logic\n\tinputHandler
+          = InputHandler()\n\tinputHandler.load_data_csv(\"https://opendata.smit.ee/ppa/csv/elamislubade_taotlused.csv\",
+          n_rows=100000)\n\tprint(''Finished loading data'')\n\tinput_data = inputHandler.data\n\tsd.save_to_csv(input_data,
+          output_csv)\n\n\tend_time = time.time()\n\tduration = (end_time - start_time)
+          / 60\n\tprint(f\"Component completed in {duration:.2f} minutes.\")\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''Input'', description='''')\n_parser.add_argument(\"--output-csv\",
+          dest=\"output_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = input(**_parsed_args)\n"], "image": "gitlab.cyber.ee:5050/exai/data-synthesis-workflow-engine:latest"}},
+          "name": "Input", "outputs": [{"name": "output_csv", "type": "csv"}]}'
+      labels:
+        pipelines.kubeflow.org/enable_caching: 'true'
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+    name: input
+    outputs:
+      artifacts:
+      - name: input-output_csv
+        path: /tmp/outputs/output_csv/data
+  - container:
+      args:
+      - --input-csv
+      - /tmp/inputs/input_csv/data
+      - --output-json
+      - /tmp/outputs/output_json/data
+      command:
+      - sh
+      - -ec
+      - 'program_path=$(mktemp)
+
+        printf "%s" "$0" > "$program_path"
+
+        python3 -u "$program_path" "$@"
+
+        '
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef preprocess(input_csv, output_json):\n    import time\n    start_time\
+        \ = time.time()\n    import synthguard.helper_functions as sd\n    from synthguard.data_preprocessor\
+        \ import DataPreprocessor\n\n    #Component logic\n    input_data = sd.load_data_csv(input_csv)\n\
+        \    dataPreprocessor = DataPreprocessor(data = input_data)\n\n    processed_data,\
+        \ metadata = dataPreprocessor.preprocess_data()\n    sd.save_metadata(metadata,\
+        \ output_json)\n\n    end_time = time.time()\n    duration = (end_time - start_time)\
+        \ / 60\n    print(f\"Component completed in {duration:.2f} minutes.\")\n\n\
+        import argparse\n_parser = argparse.ArgumentParser(prog='Preprocess', description='')\n\
+        _parser.add_argument(\"--input-csv\", dest=\"input_csv\", type=str, required=True,\
+        \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-json\", dest=\"\
+        output_json\", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)\n\
+        _parsed_args = vars(_parser.parse_args())\n\n_outputs = preprocess(**_parsed_args)\n"
+      image: gitlab.cyber.ee:5050/exai/data-synthesis-workflow-engine:latest
+    inputs:
+      artifacts:
+      - name: input-output_csv
+        path: /tmp/inputs/input_csv/data
+    metadata:
+      annotations:
+        pipelines.kubeflow.org/component_ref: '{}'
+        pipelines.kubeflow.org/component_spec: '{"implementation": {"container": {"args":
+          ["--input-csv", {"inputPath": "input_csv"}, "--output-json", {"outputPath":
+          "output_json"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef preprocess(input_csv, output_json):\n    import
+          time\n    start_time = time.time()\n    import synthguard.helper_functions
+          as sd\n    from synthguard.data_preprocessor import DataPreprocessor\n\n    #Component
+          logic\n    input_data = sd.load_data_csv(input_csv)\n    dataPreprocessor
+          = DataPreprocessor(data = input_data)\n\n    processed_data, metadata =
+          dataPreprocessor.preprocess_data()\n    sd.save_metadata(metadata, output_json)\n\n    end_time
+          = time.time()\n    duration = (end_time - start_time) / 60\n    print(f\"Component
+          completed in {duration:.2f} minutes.\")\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Preprocess'',
+          description='''')\n_parser.add_argument(\"--input-csv\", dest=\"input_csv\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-json\",
+          dest=\"output_json\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = preprocess(**_parsed_args)\n"], "image": "gitlab.cyber.ee:5050/exai/data-synthesis-workflow-engine:latest"}},
+          "inputs": [{"name": "input_csv", "type": "csv"}], "name": "Preprocess",
+          "outputs": [{"name": "output_json", "type": "json"}]}'
+      labels:
+        pipelines.kubeflow.org/enable_caching: 'true'
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+    name: preprocess
+    outputs:
+      artifacts:
+      - name: preprocess-output_json
+        path: /tmp/outputs/output_json/data
+  - container:
+      args:
+      - --input-synth-csv
+      - /tmp/inputs/input_synth_csv/data
+      - --input-real-csv
+      - /tmp/inputs/input_real_csv/data
+      - --input-json
+      - /tmp/inputs/input_json/data
+      - --output-html
+      - /tmp/outputs/output_html/data
+      - '----output-paths'
+      - /tmp/outputs/mlpipeline_ui_metadata/data
+      command:
+      - sh
+      - -ec
+      - 'program_path=$(mktemp)
+
+        printf "%s" "$0" > "$program_path"
+
+        python3 -u "$program_path" "$@"
+
+        '
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef privacy(input_synth_csv, input_real_csv, input_json, output_html):\n\
+        \    import time\n    start_time = time.time()\n    import synthguard.helper_functions\
+        \ as sd\n    import json\n\n    with open(output_html, \"w\") as f:\n    \
+        \    f.write(\"<html><body>\")  # Start the HTML document\n\n    #Component\
+        \ logic\n    from synthguard.privacy_report_generator import PrivacyRiskEvaluator\n\
+        \    real_data = sd.load_data_csv(input_real_csv)\n    synthetic_data = sd.load_data_csv(input_synth_csv)\n\
+        \    metadata = sd.load_metadata(input_json)\n    synthetic_data_type = 'realistic'\n\
+        \n    privacyRiskEvaluator = PrivacyRiskEvaluator(real_data = real_data, synthetic_data\
+        \ = synthetic_data, metadata = metadata, method=synthetic_data_type)\n   \
+        \ privacyRiskEvaluator.run_privacy_realistic()\n    privacyRiskEvaluator.plot_privacy_metrics_realistic()\n\
+        \    privacyRiskEvaluator.save_plot_to_html(output_html)\n\n    # Read the\
+        \ HTML content for UI metadata\n    with open(output_html, 'r') as file:\n\
+        \        html_content = file.read()\n\n    metadata = {\n        'outputs':\
+        \ [{\n            'type': 'web-app',\n            'storage': 'inline',\n \
+        \           'source': html_content,\n        }]\n    }\n\n    from collections\
+        \ import namedtuple\n    visualization_output = namedtuple('VisualizationOutput',\
+        \ ['mlpipeline_ui_metadata'])\n\n    end_time = time.time()\n    duration\
+        \ = (end_time - start_time) / 60\n    print(f\"Component completed in {duration:.2f}\
+        \ minutes.\")\n\n    return visualization_output(json.dumps(metadata))\n\n\
+        import argparse\n_parser = argparse.ArgumentParser(prog='Privacy', description='')\n\
+        _parser.add_argument(\"--input-synth-csv\", dest=\"input_synth_csv\", type=str,\
+        \ required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-real-csv\"\
+        , dest=\"input_real_csv\", type=str, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--input-json\", dest=\"input_json\", type=str, required=True,\
+        \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-html\", dest=\"\
+        output_html\", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"----output-paths\", dest=\"_output_paths\", type=str,\
+        \ nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files = _parsed_args.pop(\"\
+        _output_paths\", [])\n\n_outputs = privacy(**_parsed_args)\n\n_output_serializers\
+        \ = [\n    str,\n\n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n\
+        \    try:\n        os.makedirs(os.path.dirname(output_file))\n    except OSError:\n\
+        \        pass\n    with open(output_file, 'w') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"
+      image: gitlab.cyber.ee:5050/exai/data-synthesis-workflow-engine:latest
+    inputs:
+      artifacts:
+      - name: preprocess-output_json
+        path: /tmp/inputs/input_json/data
+      - name: generation-output_csv
+        path: /tmp/inputs/input_real_csv/data
+      - name: input-output_csv
+        path: /tmp/inputs/input_synth_csv/data
+    metadata:
+      annotations:
+        pipelines.kubeflow.org/component_ref: '{}'
+        pipelines.kubeflow.org/component_spec: '{"implementation": {"container": {"args":
+          ["--input-synth-csv", {"inputPath": "input_synth_csv"}, "--input-real-csv",
+          {"inputPath": "input_real_csv"}, "--input-json", {"inputPath": "input_json"},
+          "--output-html", {"outputPath": "output_html"}, "----output-paths", {"outputPath":
+          "mlpipeline_ui_metadata"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef privacy(input_synth_csv, input_real_csv,
+          input_json, output_html):\n    import time\n    start_time = time.time()\n    import
+          synthguard.helper_functions as sd\n    import json\n\n    with open(output_html,
+          \"w\") as f:\n        f.write(\"<html><body>\")  # Start the HTML document\n\n    #Component
+          logic\n    from synthguard.privacy_report_generator import PrivacyRiskEvaluator\n    real_data
+          = sd.load_data_csv(input_real_csv)\n    synthetic_data = sd.load_data_csv(input_synth_csv)\n    metadata
+          = sd.load_metadata(input_json)\n    synthetic_data_type = ''realistic''\n\n    privacyRiskEvaluator
+          = PrivacyRiskEvaluator(real_data = real_data, synthetic_data = synthetic_data,
+          metadata = metadata, method=synthetic_data_type)\n    privacyRiskEvaluator.run_privacy_realistic()\n    privacyRiskEvaluator.plot_privacy_metrics_realistic()\n    privacyRiskEvaluator.save_plot_to_html(output_html)\n\n    #
+          Read the HTML content for UI metadata\n    with open(output_html, ''r'')
+          as file:\n        html_content = file.read()\n\n    metadata = {\n        ''outputs'':
+          [{\n            ''type'': ''web-app'',\n            ''storage'': ''inline'',\n            ''source'':
+          html_content,\n        }]\n    }\n\n    from collections import namedtuple\n    visualization_output
+          = namedtuple(''VisualizationOutput'', [''mlpipeline_ui_metadata''])\n\n    end_time
+          = time.time()\n    duration = (end_time - start_time) / 60\n    print(f\"Component
+          completed in {duration:.2f} minutes.\")\n\n    return visualization_output(json.dumps(metadata))\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''Privacy'', description='''')\n_parser.add_argument(\"--input-synth-csv\",
+          dest=\"input_synth_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-real-csv\",
+          dest=\"input_real_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-json\",
+          dest=\"input_json\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-html\",
+          dest=\"output_html\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\", dest=\"_output_paths\",
+          type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+          = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = privacy(**_parsed_args)\n\n_output_serializers
+          = [\n    str,\n\n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+          OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+          "image": "gitlab.cyber.ee:5050/exai/data-synthesis-workflow-engine:latest"}},
+          "inputs": [{"name": "input_synth_csv", "type": "csv"}, {"name": "input_real_csv",
+          "type": "csv"}, {"name": "input_json", "type": "json"}], "name": "Privacy",
+          "outputs": [{"name": "output_html", "type": "html"}, {"name": "mlpipeline_ui_metadata",
+          "type": "UI_metadata"}]}'
+      labels:
+        pipelines.kubeflow.org/enable_caching: 'true'
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+    name: privacy
+    outputs:
+      artifacts:
+      - name: mlpipeline-ui-metadata
+        path: /tmp/outputs/mlpipeline_ui_metadata/data
+      - name: privacy-output_html
+        path: /tmp/outputs/output_html/data
+  - container:
+      args:
+      - --input-synth-csv
+      - /tmp/inputs/input_synth_csv/data
+      - --input-real-csv
+      - /tmp/inputs/input_real_csv/data
+      - --input-json
+      - /tmp/inputs/input_json/data
+      - --output-html
+      - /tmp/outputs/output_html/data
+      - '----output-paths'
+      - /tmp/outputs/mlpipeline_ui_metadata/data
+      command:
+      - sh
+      - -ec
+      - 'program_path=$(mktemp)
+
+        printf "%s" "$0" > "$program_path"
+
+        python3 -u "$program_path" "$@"
+
+        '
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef qualityReport(input_synth_csv, input_real_csv, input_json, output_html):\n\
+        \    import time\n    start_time = time.time()\n\n    import synthguard.helper_functions\
+        \ as sd\n    import json\n\n    with open(output_html, \"w\") as f:\n    \
+        \    f.write(\"<html><body>\")  # Start the HTML document\n\n    #Component\
+        \ logic\n    from synthguard.quality_report_generator import DataQualityEvaluator\n\
+        \    real_data = sd.load_data_csv(input_real_csv)\n    synthetic_data = sd.load_data_csv(input_synth_csv)\n\
+        \    metadata = sd.load_metadata(input_json)\n    synthetic_data_type = 'realistic'\n\
+        \n    dataQualityEvaluator = DataQualityEvaluator(real_data = real_data, synthetic_data\
+        \ = synthetic_data, metadata = metadata, method=synthetic_data_type)\n   \
+        \ dataQualityEvaluator.evaluate_quality()\n    dataQualityEvaluator.plot_quality_report_realistic()\n\
+        \    dataQualityEvaluator.save_plot_to_html(output_html)\n\n    # Read the\
+        \ HTML content for UI metadata\n    with open(output_html, 'r') as file:\n\
+        \        html_content = file.read()\n\n    metadata = {\n        'outputs':\
+        \ [{\n            'type': 'web-app',\n            'storage': 'inline',\n \
+        \           'source': html_content,\n        }]\n    }\n\n    from collections\
+        \ import namedtuple\n    visualization_output = namedtuple('VisualizationOutput',\
+        \ ['mlpipeline_ui_metadata'])\n\n    end_time = time.time()\n    duration\
+        \ = (end_time - start_time) / 60\n    print(f\"Component completed in {duration:.2f}\
+        \ minutes.\")\n\n    return visualization_output(json.dumps(metadata))\n\n\
+        import argparse\n_parser = argparse.ArgumentParser(prog='QualityReport', description='')\n\
+        _parser.add_argument(\"--input-synth-csv\", dest=\"input_synth_csv\", type=str,\
+        \ required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-real-csv\"\
+        , dest=\"input_real_csv\", type=str, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--input-json\", dest=\"input_json\", type=str, required=True,\
+        \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-html\", dest=\"\
+        output_html\", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"----output-paths\", dest=\"_output_paths\", type=str,\
+        \ nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files = _parsed_args.pop(\"\
+        _output_paths\", [])\n\n_outputs = qualityReport(**_parsed_args)\n\n_output_serializers\
+        \ = [\n    str,\n\n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n\
+        \    try:\n        os.makedirs(os.path.dirname(output_file))\n    except OSError:\n\
+        \        pass\n    with open(output_file, 'w') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"
+      image: gitlab.cyber.ee:5050/exai/data-synthesis-workflow-engine:latest
+    inputs:
+      artifacts:
+      - name: preprocess-output_json
+        path: /tmp/inputs/input_json/data
+      - name: generation-output_csv
+        path: /tmp/inputs/input_real_csv/data
+      - name: input-output_csv
+        path: /tmp/inputs/input_synth_csv/data
+    metadata:
+      annotations:
+        pipelines.kubeflow.org/component_ref: '{}'
+        pipelines.kubeflow.org/component_spec: '{"implementation": {"container": {"args":
+          ["--input-synth-csv", {"inputPath": "input_synth_csv"}, "--input-real-csv",
+          {"inputPath": "input_real_csv"}, "--input-json", {"inputPath": "input_json"},
+          "--output-html", {"outputPath": "output_html"}, "----output-paths", {"outputPath":
+          "mlpipeline_ui_metadata"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef qualityReport(input_synth_csv,
+          input_real_csv, input_json, output_html):\n    import time\n    start_time
+          = time.time()\n\n    import synthguard.helper_functions as sd\n    import
+          json\n\n    with open(output_html, \"w\") as f:\n        f.write(\"<html><body>\")  #
+          Start the HTML document\n\n    #Component logic\n    from synthguard.quality_report_generator
+          import DataQualityEvaluator\n    real_data = sd.load_data_csv(input_real_csv)\n    synthetic_data
+          = sd.load_data_csv(input_synth_csv)\n    metadata = sd.load_metadata(input_json)\n    synthetic_data_type
+          = ''realistic''\n\n    dataQualityEvaluator = DataQualityEvaluator(real_data
+          = real_data, synthetic_data = synthetic_data, metadata = metadata, method=synthetic_data_type)\n    dataQualityEvaluator.evaluate_quality()\n    dataQualityEvaluator.plot_quality_report_realistic()\n    dataQualityEvaluator.save_plot_to_html(output_html)\n\n    #
+          Read the HTML content for UI metadata\n    with open(output_html, ''r'')
+          as file:\n        html_content = file.read()\n\n    metadata = {\n        ''outputs'':
+          [{\n            ''type'': ''web-app'',\n            ''storage'': ''inline'',\n            ''source'':
+          html_content,\n        }]\n    }\n\n    from collections import namedtuple\n    visualization_output
+          = namedtuple(''VisualizationOutput'', [''mlpipeline_ui_metadata''])\n\n    end_time
+          = time.time()\n    duration = (end_time - start_time) / 60\n    print(f\"Component
+          completed in {duration:.2f} minutes.\")\n\n    return visualization_output(json.dumps(metadata))\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''QualityReport'', description='''')\n_parser.add_argument(\"--input-synth-csv\",
+          dest=\"input_synth_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-real-csv\",
+          dest=\"input_real_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-json\",
+          dest=\"input_json\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-html\",
+          dest=\"output_html\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\", dest=\"_output_paths\",
+          type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+          = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = qualityReport(**_parsed_args)\n\n_output_serializers
+          = [\n    str,\n\n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+          OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+          "image": "gitlab.cyber.ee:5050/exai/data-synthesis-workflow-engine:latest"}},
+          "inputs": [{"name": "input_synth_csv", "type": "csv"}, {"name": "input_real_csv",
+          "type": "csv"}, {"name": "input_json", "type": "json"}], "name": "QualityReport",
+          "outputs": [{"name": "output_html", "type": "html"}, {"name": "mlpipeline_ui_metadata",
+          "type": "UI_metadata"}]}'
+      labels:
+        pipelines.kubeflow.org/enable_caching: 'true'
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+    name: qualityreport
+    outputs:
+      artifacts:
+      - name: mlpipeline-ui-metadata
+        path: /tmp/outputs/mlpipeline_ui_metadata/data
+      - name: qualityreport-output_html
+        path: /tmp/outputs/output_html/data
+  - dag:
+      tasks:
+      - arguments:
+          artifacts:
+          - from: '{{tasks.generation.outputs.artifacts.generation-output_csv}}'
+            name: generation-output_csv
+          - from: '{{tasks.input.outputs.artifacts.input-output_csv}}'
+            name: input-output_csv
+          - from: '{{tasks.preprocess.outputs.artifacts.preprocess-output_json}}'
+            name: preprocess-output_json
+        dependencies:
+        - generation
+        - input
+        - preprocess
+        name: diagnosticreport
+        template: diagnosticreport
+      - arguments:
+          artifacts:
+          - from: '{{tasks.input.outputs.artifacts.input-output_csv}}'
+            name: input-output_csv
+          - from: '{{tasks.preprocess.outputs.artifacts.preprocess-output_json}}'
+            name: preprocess-output_json
+        dependencies:
+        - input
+        - preprocess
+        name: generation
+        template: generation
+      - name: input
+        template: input
+      - arguments:
+          artifacts:
+          - from: '{{tasks.input.outputs.artifacts.input-output_csv}}'
+            name: input-output_csv
+        dependencies:
+        - input
+        name: preprocess
+        template: preprocess
+      - arguments:
+          artifacts:
+          - from: '{{tasks.generation.outputs.artifacts.generation-output_csv}}'
+            name: generation-output_csv
+          - from: '{{tasks.input.outputs.artifacts.input-output_csv}}'
+            name: input-output_csv
+          - from: '{{tasks.preprocess.outputs.artifacts.preprocess-output_json}}'
+            name: preprocess-output_json
+        dependencies:
+        - generation
+        - input
+        - preprocess
+        name: privacy
+        template: privacy
+      - arguments:
+          artifacts:
+          - from: '{{tasks.generation.outputs.artifacts.generation-output_csv}}'
+            name: generation-output_csv
+          - from: '{{tasks.input.outputs.artifacts.input-output_csv}}'
+            name: input-output_csv
+          - from: '{{tasks.preprocess.outputs.artifacts.preprocess-output_json}}'
+            name: preprocess-output_json
+        dependencies:
+        - generation
+        - input
+        - preprocess
+        name: qualityreport
+        template: qualityreport
+    name: test-pipeline-100k

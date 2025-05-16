@@ -1,0 +1,1892 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: test-teadal-pipeline-
+  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.22, pipelines.kubeflow.org/pipeline_compilation_time: '2025-01-21T08:30:41.165152',
+    pipelines.kubeflow.org/pipeline_spec: '{"inputs": [{"name": "n_rows", "type":
+      "Integer"}], "name": "test_TEADAL_pipeline"}'}
+  labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.22}
+spec:
+  entrypoint: test-teadal-pipeline
+  templates:
+  - name: arpat-preprocessor
+    container:
+      args: [--input-pm10-csv, /tmp/inputs/input_pm10_csv/data, --input-pm25-csv,
+        /tmp/inputs/input_pm25_csv/data, --output-pm10-csv, /tmp/outputs/output_pm10_csv/data,
+        --output-pm25-csv, /tmp/outputs/output_pm25_csv/data, --output-pm10-metadata,
+        /tmp/outputs/output_pm10_metadata/data, --output-pm25-metadata, /tmp/outputs/output_pm25_metadata/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef arpat_preprocessor(input_pm10_csv, \n                       input_pm25_csv,\n\
+        \                       output_pm10_csv ,\n                       output_pm25_csv\
+        \ ,\n                       output_pm10_metadata ,\n                     \
+        \  output_pm25_metadata ):\n    from synthguard.data_preprocessor import DataPreprocessor\n\
+        \    from synthguard.helper_functions import load_data_csv, save_metadata,\
+        \ save_to_csv\n\n    real_arpat_PM10 = load_data_csv(input_pm10_csv)\n   \
+        \ real_arpat_PM25 = load_data_csv(input_pm25_csv)\n\n    pm10_column = 'PM10'\n\
+        \    pm2dot5_column = 'PM2dot5'\n\n    columns_dict_pm10 = {\n        \"DATA_OSSERVAZIONE\"\
+        : \"datetime64[ns]\",\n        'PM10': 'float64',\n        'COMUNE': 'string',\n\
+        \    }\n\n    columns_dict_pm25 = {\n        \"DATA_OSSERVAZIONE\": \"datetime64[ns]\"\
+        ,\n        'PM2dot5': 'float64',\n        'COMUNE': 'string',\n    }\n\n \
+        \   columns_to_drop = [pm10_column, pm2dot5_column]\n\n    dataPreprocessor_arpat_PM10\
+        \ = DataPreprocessor(data = real_arpat_PM10,)\n    processed_data_arpat_PM10,\
+        \ metadata_arpat_PM10 = dataPreprocessor_arpat_PM10.preprocess_data(columns_dict=columns_dict_pm10,\
+        \ columns_to_drop=columns_to_drop)\n\n    save_metadata(metadata_arpat_PM10,\
+        \ output_pm10_metadata)\n    save_to_csv(processed_data_arpat_PM10, output_pm10_csv)\n\
+        \n    dataPreprocessor_arpat_PM25 = DataPreprocessor(data = real_arpat_PM25,)\n\
+        \    processed_data_arpat_PM25, metadata_arpat_PM25 = dataPreprocessor_arpat_PM25.preprocess_data(columns_dict=columns_dict_pm25,\
+        \ columns_to_drop=columns_to_drop)\n\n    save_metadata(metadata_arpat_PM25,\
+        \ output_pm25_metadata)\n    save_to_csv(processed_data_arpat_PM25, output_pm25_csv)\n\
+        \nimport argparse\n_parser = argparse.ArgumentParser(prog='Arpat preprocessor',\
+        \ description='')\n_parser.add_argument(\"--input-pm10-csv\", dest=\"input_pm10_csv\"\
+        , type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+        --input-pm25-csv\", dest=\"input_pm25_csv\", type=str, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--output-pm10-csv\", dest=\"output_pm10_csv\", type=_make_parent_dirs_and_return_path,\
+        \ required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-pm25-csv\"\
+        , dest=\"output_pm25_csv\", type=_make_parent_dirs_and_return_path, required=True,\
+        \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-pm10-metadata\"\
+        , dest=\"output_pm10_metadata\", type=_make_parent_dirs_and_return_path, required=True,\
+        \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-pm25-metadata\"\
+        , dest=\"output_pm25_metadata\", type=_make_parent_dirs_and_return_path, required=True,\
+        \ default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n\
+        _outputs = arpat_preprocessor(**_parsed_args)\n"
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+    inputs:
+      artifacts:
+      - {name: load-arpat-output_pm10_csv, path: /tmp/inputs/input_pm10_csv/data}
+      - {name: load-arpat-output_pm25_csv, path: /tmp/inputs/input_pm25_csv/data}
+    outputs:
+      artifacts:
+      - {name: arpat-preprocessor-output_pm10_csv, path: /tmp/outputs/output_pm10_csv/data}
+      - {name: arpat-preprocessor-output_pm10_metadata, path: /tmp/outputs/output_pm10_metadata/data}
+      - {name: arpat-preprocessor-output_pm25_csv, path: /tmp/outputs/output_pm25_csv/data}
+      - {name: arpat-preprocessor-output_pm25_metadata, path: /tmp/outputs/output_pm25_metadata/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-pm10-csv", {"inputPath": "input_pm10_csv"}, "--input-pm25-csv",
+          {"inputPath": "input_pm25_csv"}, "--output-pm10-csv", {"outputPath": "output_pm10_csv"},
+          "--output-pm25-csv", {"outputPath": "output_pm25_csv"}, "--output-pm10-metadata",
+          {"outputPath": "output_pm10_metadata"}, "--output-pm25-metadata", {"outputPath":
+          "output_pm25_metadata"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef arpat_preprocessor(input_pm10_csv,
+          \n                       input_pm25_csv,\n                       output_pm10_csv
+          ,\n                       output_pm25_csv ,\n                       output_pm10_metadata
+          ,\n                       output_pm25_metadata ):\n    from synthguard.data_preprocessor
+          import DataPreprocessor\n    from synthguard.helper_functions import load_data_csv,
+          save_metadata, save_to_csv\n\n    real_arpat_PM10 = load_data_csv(input_pm10_csv)\n    real_arpat_PM25
+          = load_data_csv(input_pm25_csv)\n\n    pm10_column = ''PM10''\n    pm2dot5_column
+          = ''PM2dot5''\n\n    columns_dict_pm10 = {\n        \"DATA_OSSERVAZIONE\":
+          \"datetime64[ns]\",\n        ''PM10'': ''float64'',\n        ''COMUNE'':
+          ''string'',\n    }\n\n    columns_dict_pm25 = {\n        \"DATA_OSSERVAZIONE\":
+          \"datetime64[ns]\",\n        ''PM2dot5'': ''float64'',\n        ''COMUNE'':
+          ''string'',\n    }\n\n    columns_to_drop = [pm10_column, pm2dot5_column]\n\n    dataPreprocessor_arpat_PM10
+          = DataPreprocessor(data = real_arpat_PM10,)\n    processed_data_arpat_PM10,
+          metadata_arpat_PM10 = dataPreprocessor_arpat_PM10.preprocess_data(columns_dict=columns_dict_pm10,
+          columns_to_drop=columns_to_drop)\n\n    save_metadata(metadata_arpat_PM10,
+          output_pm10_metadata)\n    save_to_csv(processed_data_arpat_PM10, output_pm10_csv)\n\n    dataPreprocessor_arpat_PM25
+          = DataPreprocessor(data = real_arpat_PM25,)\n    processed_data_arpat_PM25,
+          metadata_arpat_PM25 = dataPreprocessor_arpat_PM25.preprocess_data(columns_dict=columns_dict_pm25,
+          columns_to_drop=columns_to_drop)\n\n    save_metadata(metadata_arpat_PM25,
+          output_pm25_metadata)\n    save_to_csv(processed_data_arpat_PM25, output_pm25_csv)\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''Arpat preprocessor'',
+          description='''')\n_parser.add_argument(\"--input-pm10-csv\", dest=\"input_pm10_csv\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-pm25-csv\",
+          dest=\"input_pm25_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-pm10-csv\",
+          dest=\"output_pm10_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-pm25-csv\",
+          dest=\"output_pm25_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-pm10-metadata\",
+          dest=\"output_pm10_metadata\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-pm25-metadata\",
+          dest=\"output_pm25_metadata\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = arpat_preprocessor(**_parsed_args)\n"], "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}},
+          "inputs": [{"name": "input_pm10_csv", "type": "csv"}, {"name": "input_pm25_csv",
+          "type": "csv"}], "name": "Arpat preprocessor", "outputs": [{"name": "output_pm10_csv",
+          "type": "csv"}, {"name": "output_pm25_csv", "type": "csv"}, {"name": "output_pm10_metadata",
+          "type": "json"}, {"name": "output_pm25_metadata", "type": "json"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: arpat10-generation
+    container:
+      args: [--n-rows, '{{inputs.parameters.n_rows}}', --input-metadata, /tmp/inputs/input_metadata/data,
+        --input-preprocess-csv, /tmp/inputs/input_preprocess_csv/data, --output-csv,
+        /tmp/outputs/output_csv/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def arpat10_generation(n_rows, input_metadata, input_preprocess_csv, output_csv):
+            import pandas as pd
+            from synthguard.generate_personal_data import PersonalFaker
+            from synthguard.helper_functions import save_to_csv, load_metadata, load_data_csv
+            from synthguard.synthetic_data_generator import SyntheticDataGenerator
+
+            output_arpat_json_PM10 = 'arpat-synthetic_PM10.csv'
+
+            N_Rows = n_rows
+
+            # Create an Italian instance of PersonalFaker
+            italian_fake = PersonalFaker("it_IT")
+
+            it_municipality_codes = italian_fake.generate_administrative_units(N_Rows)
+            it_municipality_codes
+
+            # Generate a list of random dates
+            random_dates_list = italian_fake.generate_random_dates(N_Rows, "2023-01-01", "2023-12-31")
+
+            synthetic_arpat_PM10_fake = pd.DataFrame({
+                'municipality': it_municipality_codes,
+                'observation_date': random_dates_list
+            })
+
+            processed_data_arpat_PM10 = load_data_csv(input_preprocess_csv)
+            metadata_arpat_PM10 = load_metadata(input_metadata)
+
+            synthetic_arpat_PM10 = SyntheticDataGenerator(n_rows=N_Rows, output_csv=output_arpat_json_PM10, method='realistic').generate_synthetic_data(processed_data_arpat_PM10, metadata_arpat_PM10)
+            synthetic_arpat_PM10_fake['PM10'] = synthetic_arpat_PM10['PM10']
+            synthetic_arpat_PM10_fake
+
+            save_to_csv(synthetic_arpat_PM10_fake, output_csv)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Arpat10 generation', description='')
+        _parser.add_argument("--n-rows", dest="n_rows", type=int, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-metadata", dest="input_metadata", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-preprocess-csv", dest="input_preprocess_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-csv", dest="output_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = arpat10_generation(**_parsed_args)
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+    inputs:
+      parameters:
+      - {name: n_rows}
+      artifacts:
+      - {name: arpat-preprocessor-output_pm10_metadata, path: /tmp/inputs/input_metadata/data}
+      - {name: arpat-preprocessor-output_pm10_csv, path: /tmp/inputs/input_preprocess_csv/data}
+    outputs:
+      artifacts:
+      - {name: arpat10-generation-output_csv, path: /tmp/outputs/output_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--n-rows", {"inputValue": "n_rows"}, "--input-metadata", {"inputPath":
+          "input_metadata"}, "--input-preprocess-csv", {"inputPath": "input_preprocess_csv"},
+          "--output-csv", {"outputPath": "output_csv"}], "command": ["sh", "-ec",
+          "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef arpat10_generation(n_rows, input_metadata, input_preprocess_csv,
+          output_csv):\n    import pandas as pd\n    from synthguard.generate_personal_data
+          import PersonalFaker\n    from synthguard.helper_functions import save_to_csv,
+          load_metadata, load_data_csv\n    from synthguard.synthetic_data_generator
+          import SyntheticDataGenerator\n\n    output_arpat_json_PM10 = ''arpat-synthetic_PM10.csv''\n\n    N_Rows
+          = n_rows\n\n    # Create an Italian instance of PersonalFaker\n    italian_fake
+          = PersonalFaker(\"it_IT\")\n\n    it_municipality_codes = italian_fake.generate_administrative_units(N_Rows)\n    it_municipality_codes\n\n    #
+          Generate a list of random dates\n    random_dates_list = italian_fake.generate_random_dates(N_Rows,
+          \"2023-01-01\", \"2023-12-31\")\n\n    synthetic_arpat_PM10_fake = pd.DataFrame({\n        ''municipality'':
+          it_municipality_codes,\n        ''observation_date'': random_dates_list\n    })\n\n    processed_data_arpat_PM10
+          = load_data_csv(input_preprocess_csv)\n    metadata_arpat_PM10 = load_metadata(input_metadata)\n\n    synthetic_arpat_PM10
+          = SyntheticDataGenerator(n_rows=N_Rows, output_csv=output_arpat_json_PM10,
+          method=''realistic'').generate_synthetic_data(processed_data_arpat_PM10,
+          metadata_arpat_PM10)\n    synthetic_arpat_PM10_fake[''PM10''] = synthetic_arpat_PM10[''PM10'']\n    synthetic_arpat_PM10_fake\n\n    save_to_csv(synthetic_arpat_PM10_fake,
+          output_csv)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Arpat10
+          generation'', description='''')\n_parser.add_argument(\"--n-rows\", dest=\"n_rows\",
+          type=int, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-metadata\",
+          dest=\"input_metadata\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-preprocess-csv\",
+          dest=\"input_preprocess_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-csv\",
+          dest=\"output_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = arpat10_generation(**_parsed_args)\n"], "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}},
+          "inputs": [{"name": "n_rows", "type": "Integer"}, {"name": "input_metadata",
+          "type": "json"}, {"name": "input_preprocess_csv", "type": "csv"}], "name":
+          "Arpat10 generation", "outputs": [{"name": "output_csv", "type": "csv"}]}',
+        pipelines.kubeflow.org/component_ref: '{}', pipelines.kubeflow.org/arguments.parameters: '{"n_rows":
+          "{{inputs.parameters.n_rows}}"}'}
+  - name: arpat25-generation
+    container:
+      args: [--n-rows, '{{inputs.parameters.n_rows}}', --input-metadata, /tmp/inputs/input_metadata/data,
+        --input-preprocess-csv, /tmp/inputs/input_preprocess_csv/data, --output-csv,
+        /tmp/outputs/output_csv/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def arpat25_generation(n_rows, input_metadata, input_preprocess_csv, output_csv):
+            import pandas as pd
+            from synthguard.generate_personal_data import PersonalFaker
+            from synthguard.synthetic_data_generator import SyntheticDataGenerator
+            from synthguard.helper_functions import save_to_csv, load_metadata, load_data_csv
+
+            N_Rows = n_rows
+            output_arpat_json_PM25 = 'arpat-synthetic_PM25.csv'
+
+            # Create an Italian instance of PersonalFaker
+            italian_fake = PersonalFaker("it_IT")
+
+            it_municipality_codes = italian_fake.generate_administrative_units(N_Rows)
+            it_municipality_codes
+
+            # Generate a list of random dates
+            random_dates_list = italian_fake.generate_random_dates(N_Rows, "2023-01-01", "2023-12-31")
+            random_dates_list
+
+            synthetic_arpat_PM25_fake = pd.DataFrame({
+                'municipality': it_municipality_codes,
+                'observation_date': random_dates_list
+            })
+
+            processed_data_arpat_PM25 = load_data_csv(input_preprocess_csv)
+            metadata_arpat_PM25 = load_metadata(input_metadata)
+
+            synthetic_arpat_PM25 = SyntheticDataGenerator(n_rows=N_Rows, output_csv=output_arpat_json_PM25, method='realistic').generate_synthetic_data(processed_data_arpat_PM25, metadata_arpat_PM25)
+            synthetic_arpat_PM25_fake['PM2dot5'] = synthetic_arpat_PM25['PM2dot5']
+            print(synthetic_arpat_PM25_fake.head())
+
+            save_to_csv(synthetic_arpat_PM25_fake, output_csv)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Arpat25 generation', description='')
+        _parser.add_argument("--n-rows", dest="n_rows", type=int, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-metadata", dest="input_metadata", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-preprocess-csv", dest="input_preprocess_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-csv", dest="output_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = arpat25_generation(**_parsed_args)
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+    inputs:
+      parameters:
+      - {name: n_rows}
+      artifacts:
+      - {name: arpat-preprocessor-output_pm25_metadata, path: /tmp/inputs/input_metadata/data}
+      - {name: arpat-preprocessor-output_pm25_csv, path: /tmp/inputs/input_preprocess_csv/data}
+    outputs:
+      artifacts:
+      - {name: arpat25-generation-output_csv, path: /tmp/outputs/output_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--n-rows", {"inputValue": "n_rows"}, "--input-metadata", {"inputPath":
+          "input_metadata"}, "--input-preprocess-csv", {"inputPath": "input_preprocess_csv"},
+          "--output-csv", {"outputPath": "output_csv"}], "command": ["sh", "-ec",
+          "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef arpat25_generation(n_rows, input_metadata, input_preprocess_csv,
+          output_csv):\n    import pandas as pd\n    from synthguard.generate_personal_data
+          import PersonalFaker\n    from synthguard.synthetic_data_generator import
+          SyntheticDataGenerator\n    from synthguard.helper_functions import save_to_csv,
+          load_metadata, load_data_csv\n\n    N_Rows = n_rows\n    output_arpat_json_PM25
+          = ''arpat-synthetic_PM25.csv''\n\n    # Create an Italian instance of PersonalFaker\n    italian_fake
+          = PersonalFaker(\"it_IT\")\n\n    it_municipality_codes = italian_fake.generate_administrative_units(N_Rows)\n    it_municipality_codes\n\n    #
+          Generate a list of random dates\n    random_dates_list = italian_fake.generate_random_dates(N_Rows,
+          \"2023-01-01\", \"2023-12-31\")\n    random_dates_list\n\n    synthetic_arpat_PM25_fake
+          = pd.DataFrame({\n        ''municipality'': it_municipality_codes,\n        ''observation_date'':
+          random_dates_list\n    })\n\n    processed_data_arpat_PM25 = load_data_csv(input_preprocess_csv)\n    metadata_arpat_PM25
+          = load_metadata(input_metadata)\n\n    synthetic_arpat_PM25 = SyntheticDataGenerator(n_rows=N_Rows,
+          output_csv=output_arpat_json_PM25, method=''realistic'').generate_synthetic_data(processed_data_arpat_PM25,
+          metadata_arpat_PM25)\n    synthetic_arpat_PM25_fake[''PM2dot5''] = synthetic_arpat_PM25[''PM2dot5'']\n    print(synthetic_arpat_PM25_fake.head())\n\n    save_to_csv(synthetic_arpat_PM25_fake,
+          output_csv)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Arpat25
+          generation'', description='''')\n_parser.add_argument(\"--n-rows\", dest=\"n_rows\",
+          type=int, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-metadata\",
+          dest=\"input_metadata\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-preprocess-csv\",
+          dest=\"input_preprocess_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-csv\",
+          dest=\"output_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = arpat25_generation(**_parsed_args)\n"], "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}},
+          "inputs": [{"name": "n_rows", "type": "Integer"}, {"name": "input_metadata",
+          "type": "json"}, {"name": "input_preprocess_csv", "type": "csv"}], "name":
+          "Arpat25 generation", "outputs": [{"name": "output_csv", "type": "csv"}]}',
+        pipelines.kubeflow.org/component_ref: '{}', pipelines.kubeflow.org/arguments.parameters: '{"n_rows":
+          "{{inputs.parameters.n_rows}}"}'}
+  - name: box2m
+    container:
+      args: [--n-records, '500', --output-json, /tmp/outputs/output_json/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef box2m(output_json, n_records = 500):\n    from synthguard.generate_personal_data\
+        \ import PersonalFaker\n\n    # Usage Example\n    BOX2M_UNITS = [\n     \
+        \   {\"name\": \"Current L1\", \"channel\": 8, \"unit\": \"A\"},\n       \
+        \ {\"name\": \"Current L2\", \"channel\": 10, \"unit\": \"A\"},\n        {\"\
+        name\": \"Current L3\", \"channel\": 12, \"unit\": \"A\"},\n        {\"name\"\
+        : \"Total Active Power\", \"channel\": 58, \"unit\": \"KW\"},\n        {\"\
+        name\": \"Total Active Energy Import\", \"channel\": 6688, \"unit\": \"KWh\"\
+        },\n    ]\n\n    box2m_faker = PersonalFaker(locale=\"it_IT\")\n    output_box2m_file_path\
+        \ = box2m_faker.generate_box2m_data(\n        n_addresses=5, \n        output_dir=output_json,\
+        \ \n        n_records_per_day=3, \n        n_box2m_records=n_records,\n  \
+        \      box2m_units=BOX2M_UNITS\n    )\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Box2m',\
+        \ description='')\n_parser.add_argument(\"--n-records\", dest=\"n_records\"\
+        , type=int, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+        --output-json\", dest=\"output_json\", type=_make_parent_dirs_and_return_path,\
+        \ required=True, default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\
+        \n_outputs = box2m(**_parsed_args)\n"
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+    outputs:
+      artifacts:
+      - {name: box2m-output_json, path: /tmp/outputs/output_json/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": [{"if": {"cond": {"isPresent": "n_records"}, "then": ["--n-records",
+          {"inputValue": "n_records"}]}}, "--output-json", {"outputPath": "output_json"}],
+          "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\" >
+          \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef box2m(output_json, n_records = 500):\n    from synthguard.generate_personal_data
+          import PersonalFaker\n\n    # Usage Example\n    BOX2M_UNITS = [\n        {\"name\":
+          \"Current L1\", \"channel\": 8, \"unit\": \"A\"},\n        {\"name\": \"Current
+          L2\", \"channel\": 10, \"unit\": \"A\"},\n        {\"name\": \"Current L3\",
+          \"channel\": 12, \"unit\": \"A\"},\n        {\"name\": \"Total Active Power\",
+          \"channel\": 58, \"unit\": \"KW\"},\n        {\"name\": \"Total Active Energy
+          Import\", \"channel\": 6688, \"unit\": \"KWh\"},\n    ]\n\n    box2m_faker
+          = PersonalFaker(locale=\"it_IT\")\n    output_box2m_file_path = box2m_faker.generate_box2m_data(\n        n_addresses=5,
+          \n        output_dir=output_json, \n        n_records_per_day=3, \n        n_box2m_records=n_records,\n        box2m_units=BOX2M_UNITS\n    )\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''Box2m'', description='''')\n_parser.add_argument(\"--n-records\",
+          dest=\"n_records\", type=int, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-json\",
+          dest=\"output_json\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = box2m(**_parsed_args)\n"], "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}},
+          "inputs": [{"default": "500", "name": "n_records", "optional": true, "type":
+          "Integer"}], "name": "Box2m", "outputs": [{"name": "output_json", "type":
+          "json"}]}', pipelines.kubeflow.org/component_ref: '{}', pipelines.kubeflow.org/arguments.parameters: '{"n_records":
+          "500"}'}
+  - name: generate-addresses
+    container:
+      args: [--n-rows, '{{inputs.parameters.n_rows}}', --input-dict, '{{inputs.parameters.load-streets-and-municipalities-Output}}',
+        --output-csv, /tmp/outputs/output_csv/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef generate_addresses(n_rows, input_dict , output_csv ):\n    from synthguard.generate_personal_data\
+        \ import PersonalFaker\n    from synthguard.helper_functions import save_to_csv\n\
+        \    import pandas as pd \n\n    italian_fake = PersonalFaker(\"it_IT\")\n\
+        \    streets = input_dict['streets']\n    municipality_codes = [code[0] for\
+        \ code in input_dict['municipalities']]\n    synthetic_addresses = italian_fake.generate_data_addresses(pd.Series(streets),\
+        \ pd.Series(municipality_codes), n_addresses=n_rows)\n\n    print(synthetic_addresses.head())\n\
+        \n    save_to_csv(synthetic_addresses, output_csv)\n\nimport json\nimport\
+        \ argparse\n_parser = argparse.ArgumentParser(prog='Generate addresses', description='')\n\
+        _parser.add_argument(\"--n-rows\", dest=\"n_rows\", type=int, required=True,\
+        \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-dict\", dest=\"\
+        input_dict\", type=json.loads, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--output-csv\", dest=\"output_csv\", type=_make_parent_dirs_and_return_path,\
+        \ required=True, default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\
+        \n_outputs = generate_addresses(**_parsed_args)\n"
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+    inputs:
+      parameters:
+      - {name: load-streets-and-municipalities-Output}
+      - {name: n_rows}
+    outputs:
+      artifacts:
+      - {name: generate-addresses-output_csv, path: /tmp/outputs/output_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--n-rows", {"inputValue": "n_rows"}, "--input-dict", {"inputValue":
+          "input_dict"}, "--output-csv", {"outputPath": "output_csv"}], "command":
+          ["sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef generate_addresses(n_rows, input_dict , output_csv ):\n    from
+          synthguard.generate_personal_data import PersonalFaker\n    from synthguard.helper_functions
+          import save_to_csv\n    import pandas as pd \n\n    italian_fake = PersonalFaker(\"it_IT\")\n    streets
+          = input_dict[''streets'']\n    municipality_codes = [code[0] for code in
+          input_dict[''municipalities'']]\n    synthetic_addresses = italian_fake.generate_data_addresses(pd.Series(streets),
+          pd.Series(municipality_codes), n_addresses=n_rows)\n\n    print(synthetic_addresses.head())\n\n    save_to_csv(synthetic_addresses,
+          output_csv)\n\nimport json\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Generate
+          addresses'', description='''')\n_parser.add_argument(\"--n-rows\", dest=\"n_rows\",
+          type=int, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-dict\",
+          dest=\"input_dict\", type=json.loads, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-csv\",
+          dest=\"output_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = generate_addresses(**_parsed_args)\n"], "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}},
+          "inputs": [{"name": "n_rows", "type": "Integer"}, {"name": "input_dict",
+          "type": "JsonObject"}], "name": "Generate addresses", "outputs": [{"name":
+          "output_csv", "type": "csv"}]}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"input_dict": "{{inputs.parameters.load-streets-and-municipalities-Output}}",
+          "n_rows": "{{inputs.parameters.n_rows}}"}'}
+  - name: load-arpat
+    container:
+      args: [--input-path, /mnt/data/datasets, --output-pm10-csv, /tmp/outputs/output_pm10_csv/data,
+        --output-pm25-csv, /tmp/outputs/output_pm25_csv/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def load_arpat(input_path, output_pm10_csv , output_pm25_csv ):
+            from synthguard.helper_functions import load_json, handle_nested_data_json
+            import pandas as pd
+
+            arpat_file = 'arpat.json'
+
+            real_arpat = handle_nested_data_json(pd.json_normalize(load_json(input_path +'/'+ arpat_file)))
+
+            pm10_column = 'PM10'
+            pm2dot5_column = 'PM2dot5'
+
+            real_arpat_PM10 = real_arpat.drop(columns=[pm2dot5_column])
+            real_arpat_PM25 = real_arpat.drop(columns=[pm10_column])
+
+            real_arpat_PM10.to_csv(output_pm10_csv)
+            real_arpat_PM25.to_csv(output_pm25_csv)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Load arpat', description='')
+        _parser.add_argument("--input-path", dest="input_path", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-pm10-csv", dest="output_pm10_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-pm25-csv", dest="output_pm25_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = load_arpat(**_parsed_args)
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+      volumeMounts:
+      - {mountPath: /mnt/data/, name: pvolume-2702e0041dc7869f5ca7fcf2de957112d15d9a932d5e274a7bf2565}
+    outputs:
+      artifacts:
+      - {name: load-arpat-output_pm10_csv, path: /tmp/outputs/output_pm10_csv/data}
+      - {name: load-arpat-output_pm25_csv, path: /tmp/outputs/output_pm25_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-path", {"inputValue": "input_path"}, "--output-pm10-csv",
+          {"outputPath": "output_pm10_csv"}, "--output-pm25-csv", {"outputPath": "output_pm25_csv"}],
+          "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\" >
+          \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef load_arpat(input_path, output_pm10_csv , output_pm25_csv
+          ):\n    from synthguard.helper_functions import load_json, handle_nested_data_json\n    import
+          pandas as pd\n\n    arpat_file = ''arpat.json''\n\n    real_arpat = handle_nested_data_json(pd.json_normalize(load_json(input_path
+          +''/''+ arpat_file)))\n\n    pm10_column = ''PM10''\n    pm2dot5_column
+          = ''PM2dot5''\n\n    real_arpat_PM10 = real_arpat.drop(columns=[pm2dot5_column])\n    real_arpat_PM25
+          = real_arpat.drop(columns=[pm10_column])\n\n    real_arpat_PM10.to_csv(output_pm10_csv)\n    real_arpat_PM25.to_csv(output_pm25_csv)\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''Load arpat'', description='''')\n_parser.add_argument(\"--input-path\",
+          dest=\"input_path\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-pm10-csv\",
+          dest=\"output_pm10_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-pm25-csv\",
+          dest=\"output_pm25_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = load_arpat(**_parsed_args)\n"], "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}},
+          "inputs": [{"name": "input_path", "type": "String"}], "name": "Load arpat",
+          "outputs": [{"name": "output_pm10_csv", "type": "csv"}, {"name": "output_pm25_csv",
+          "type": "csv"}]}', pipelines.kubeflow.org/component_ref: '{}', pipelines.kubeflow.org/arguments.parameters: '{"input_path":
+          "/mnt/data/datasets"}'}
+    volumes:
+    - name: pvolume-2702e0041dc7869f5ca7fcf2de957112d15d9a932d5e274a7bf2565
+      persistentVolumeClaim: {claimName: my-pvc}
+  - name: load-streets-and-municipalities
+    container:
+      args: [--input-path, /mnt/data/datasets/, '----output-paths', /tmp/outputs/Output/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def load_streets_and_municipalities(input_path):
+            from synthguard.helper_functions import read_txt_and_convert_to_df
+
+            input_file1 = input_path+"street_names.txt"
+            input_file2 = input_path+"municipality_codes.txt"
+
+            street_names, municipality_codes = (read_txt_and_convert_to_df(input_path, f) for f in [input_file1, input_file2])
+
+            print(street_names.head())
+            print(municipality_codes.head())
+
+            streets_and_municipalities = {
+                'streets': street_names.values.tolist(),
+                'municipalities': municipality_codes.values.tolist()
+            }
+            return streets_and_municipalities
+
+        def _serialize_json(obj) -> str:
+            if isinstance(obj, str):
+                return obj
+            import json
+
+            def default_serializer(obj):
+                if hasattr(obj, 'to_struct'):
+                    return obj.to_struct()
+                else:
+                    raise TypeError(
+                        "Object of type '%s' is not JSON serializable and does not have .to_struct() method."
+                        % obj.__class__.__name__)
+
+            return json.dumps(obj, default=default_serializer, sort_keys=True)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Load streets and municipalities', description='')
+        _parser.add_argument("--input-path", dest="input_path", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("----output-paths", dest="_output_paths", type=str, nargs=1)
+        _parsed_args = vars(_parser.parse_args())
+        _output_files = _parsed_args.pop("_output_paths", [])
+
+        _outputs = load_streets_and_municipalities(**_parsed_args)
+
+        _outputs = [_outputs]
+
+        _output_serializers = [
+            _serialize_json,
+
+        ]
+
+        import os
+        for idx, output_file in enumerate(_output_files):
+            try:
+                os.makedirs(os.path.dirname(output_file))
+            except OSError:
+                pass
+            with open(output_file, 'w') as f:
+                f.write(_output_serializers[idx](_outputs[idx]))
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+      volumeMounts:
+      - {mountPath: /mnt/data/, name: pvolume-2702e0041dc7869f5ca7fcf2de957112d15d9a932d5e274a7bf2565}
+    outputs:
+      parameters:
+      - name: load-streets-and-municipalities-Output
+        valueFrom: {path: /tmp/outputs/Output/data}
+      artifacts:
+      - {name: load-streets-and-municipalities-Output, path: /tmp/outputs/Output/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-path", {"inputValue": "input_path"}, "----output-paths",
+          {"outputPath": "Output"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def load_streets_and_municipalities(input_path):\n    from synthguard.helper_functions
+          import read_txt_and_convert_to_df\n\n    input_file1 = input_path+\"street_names.txt\"\n    input_file2
+          = input_path+\"municipality_codes.txt\"\n\n    street_names, municipality_codes
+          = (read_txt_and_convert_to_df(input_path, f) for f in [input_file1, input_file2])\n\n    print(street_names.head())\n    print(municipality_codes.head())\n\n    streets_and_municipalities
+          = {\n        ''streets'': street_names.values.tolist(),\n        ''municipalities'':
+          municipality_codes.values.tolist()\n    }\n    return streets_and_municipalities\n\ndef
+          _serialize_json(obj) -> str:\n    if isinstance(obj, str):\n        return
+          obj\n    import json\n\n    def default_serializer(obj):\n        if hasattr(obj,
+          ''to_struct''):\n            return obj.to_struct()\n        else:\n            raise
+          TypeError(\n                \"Object of type ''%s'' is not JSON serializable
+          and does not have .to_struct() method.\"\n                % obj.__class__.__name__)\n\n    return
+          json.dumps(obj, default=default_serializer, sort_keys=True)\n\nimport argparse\n_parser
+          = argparse.ArgumentParser(prog=''Load streets and municipalities'', description='''')\n_parser.add_argument(\"--input-path\",
+          dest=\"input_path\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\",
+          dest=\"_output_paths\", type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+          = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = load_streets_and_municipalities(**_parsed_args)\n\n_outputs
+          = [_outputs]\n\n_output_serializers = [\n    _serialize_json,\n\n]\n\nimport
+          os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+          OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+          "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}}, "inputs":
+          [{"name": "input_path", "type": "String"}], "name": "Load streets and municipalities",
+          "outputs": [{"name": "Output", "type": "JsonObject"}]}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"input_path": "/mnt/data/datasets/"}'}
+    volumes:
+    - name: pvolume-2702e0041dc7869f5ca7fcf2de957112d15d9a932d5e274a7bf2565
+      persistentVolumeClaim: {claimName: my-pvc}
+  - name: rtape
+    container:
+      args: [--input-path, /mnt/data/datasets/, --input-csv, /tmp/inputs/input_csv/data,
+        --num-certificates, '200', --output-zip, /tmp/outputs/output_zip/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def rtape(input_path, input_csv , output_zip , num_certificates = 200):
+            from synthguard.generate_personal_data import PersonalFaker
+            import os
+            from synthguard.helper_functions import load_data_csv
+
+            # packages_to_install = ["xmlschema"]
+
+            # Create an instance of PersonalFaker
+            RT_APE_fake = PersonalFaker()
+
+            rt_cit_thermal_group = load_data_csv(input_csv)
+
+            # Generate synthetic addresses and municipality codes
+            addresses = rt_cit_thermal_group['address'].tolist()
+            municipality_codes = rt_cit_thermal_group['municipality_code'].tolist()
+
+            # Define energy ratings and number of certificates
+            energy_ratings = ["A4", "A3", "A2", "A1", "B", "C", "D", "E", "F", "G"]
+
+            # Define file paths for the schema and example XML template
+            xsd_file_path = os.path.join(input_path, 'rt-ape-schema.xsd')
+
+            # Define the path to the example XML file
+            xml_file_path = os.path.join(input_path, 'rt-ape-example.xml')
+
+            # Generate XML files based on the template and schema and return the zipped files path
+            RT_APE_files = RT_APE_fake.generate_xml_files_from_template(input_path, output_zip, xsd_file_path, xml_file_path,
+                                                    addresses, municipality_codes, num_certificates, energy_ratings,)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Rtape', description='')
+        _parser.add_argument("--input-path", dest="input_path", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-csv", dest="input_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--num-certificates", dest="num_certificates", type=int, required=False, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-zip", dest="output_zip", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = rtape(**_parsed_args)
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+      volumeMounts:
+      - {mountPath: /mnt/data/, name: pvolume-2702e0041dc7869f5ca7fcf2de957112d15d9a932d5e274a7bf2565}
+    inputs:
+      artifacts:
+      - {name: rtcit-output_csv, path: /tmp/inputs/input_csv/data}
+    outputs:
+      artifacts:
+      - {name: rtape-output_zip, path: /tmp/outputs/output_zip/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-path", {"inputValue": "input_path"}, "--input-csv", {"inputPath":
+          "input_csv"}, {"if": {"cond": {"isPresent": "num_certificates"}, "then":
+          ["--num-certificates", {"inputValue": "num_certificates"}]}}, "--output-zip",
+          {"outputPath": "output_zip"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef rtape(input_path, input_csv
+          , output_zip , num_certificates = 200):\n    from synthguard.generate_personal_data
+          import PersonalFaker\n    import os\n    from synthguard.helper_functions
+          import load_data_csv\n\n    # packages_to_install = [\"xmlschema\"]\n\n    #
+          Create an instance of PersonalFaker\n    RT_APE_fake = PersonalFaker()\n\n    rt_cit_thermal_group
+          = load_data_csv(input_csv)\n\n    # Generate synthetic addresses and municipality
+          codes\n    addresses = rt_cit_thermal_group[''address''].tolist()\n    municipality_codes
+          = rt_cit_thermal_group[''municipality_code''].tolist()\n\n    # Define energy
+          ratings and number of certificates\n    energy_ratings = [\"A4\", \"A3\",
+          \"A2\", \"A1\", \"B\", \"C\", \"D\", \"E\", \"F\", \"G\"]\n\n    # Define
+          file paths for the schema and example XML template\n    xsd_file_path =
+          os.path.join(input_path, ''rt-ape-schema.xsd'')\n\n    # Define the path
+          to the example XML file\n    xml_file_path = os.path.join(input_path, ''rt-ape-example.xml'')\n\n    #
+          Generate XML files based on the template and schema and return the zipped
+          files path\n    RT_APE_files = RT_APE_fake.generate_xml_files_from_template(input_path,
+          output_zip, xsd_file_path, xml_file_path,\n                                            addresses,
+          municipality_codes, num_certificates, energy_ratings,)\n\nimport argparse\n_parser
+          = argparse.ArgumentParser(prog=''Rtape'', description='''')\n_parser.add_argument(\"--input-path\",
+          dest=\"input_path\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-csv\",
+          dest=\"input_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--num-certificates\",
+          dest=\"num_certificates\", type=int, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-zip\",
+          dest=\"output_zip\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = rtape(**_parsed_args)\n"], "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}},
+          "inputs": [{"name": "input_path", "type": "String"}, {"name": "input_csv",
+          "type": "csv"}, {"default": "200", "name": "num_certificates", "optional":
+          true, "type": "Integer"}], "name": "Rtape", "outputs": [{"name": "output_zip",
+          "type": "zip"}]}', pipelines.kubeflow.org/component_ref: '{}', pipelines.kubeflow.org/arguments.parameters: '{"input_path":
+          "/mnt/data/datasets/", "num_certificates": "200"}'}
+    volumes:
+    - name: pvolume-2702e0041dc7869f5ca7fcf2de957112d15d9a932d5e274a7bf2565
+      persistentVolumeClaim: {claimName: my-pvc}
+  - name: rtcit
+    container:
+      args: [--input-csv, /tmp/inputs/input_csv/data, --n-reports-per-address, '3',
+        --output-csv, /tmp/outputs/output_csv/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def rtcit(input_csv , output_csv , n_reports_per_address=3):
+            from synthguard.generate_personal_data import PersonalFaker
+            from synthguard.helper_functions import load_data_csv
+
+            # Create an instance of PersonalFaker
+            italian_fake = PersonalFaker("it_IT")
+
+            synthetic_addresses = load_data_csv(input_csv)
+
+            # Parameters
+            n_addresses = synthetic_addresses.shape[0]
+
+            cadastre_codes_thermal_units = italian_fake.generate_cadastre_and_thermal_units(n_addresses, n_reports_per_address)
+
+            # generate the rt-cit-thermal-group data
+            rt_cit_thermal_group = italian_fake.generate_rt_cit_thermal_group(synthetic_addresses, cadastre_codes_thermal_units, n_reports_per_address)
+            rt_cit_thermal_group.to_csv(output_csv, index=False)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Rtcit', description='')
+        _parser.add_argument("--input-csv", dest="input_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--n-reports-per-address", dest="n_reports_per_address", type=int, required=False, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-csv", dest="output_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = rtcit(**_parsed_args)
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+    inputs:
+      artifacts:
+      - {name: generate-addresses-output_csv, path: /tmp/inputs/input_csv/data}
+    outputs:
+      artifacts:
+      - {name: rtcit-output_csv, path: /tmp/outputs/output_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-csv", {"inputPath": "input_csv"}, {"if": {"cond": {"isPresent":
+          "n_reports_per_address"}, "then": ["--n-reports-per-address", {"inputValue":
+          "n_reports_per_address"}]}}, "--output-csv", {"outputPath": "output_csv"}],
+          "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\" >
+          \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef rtcit(input_csv , output_csv , n_reports_per_address=3):\n    from
+          synthguard.generate_personal_data import PersonalFaker\n    from synthguard.helper_functions
+          import load_data_csv\n\n    # Create an instance of PersonalFaker\n    italian_fake
+          = PersonalFaker(\"it_IT\")\n\n    synthetic_addresses = load_data_csv(input_csv)\n\n    #
+          Parameters\n    n_addresses = synthetic_addresses.shape[0]\n\n    cadastre_codes_thermal_units
+          = italian_fake.generate_cadastre_and_thermal_units(n_addresses, n_reports_per_address)\n\n    #
+          generate the rt-cit-thermal-group data\n    rt_cit_thermal_group = italian_fake.generate_rt_cit_thermal_group(synthetic_addresses,
+          cadastre_codes_thermal_units, n_reports_per_address)\n    rt_cit_thermal_group.to_csv(output_csv,
+          index=False)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Rtcit'',
+          description='''')\n_parser.add_argument(\"--input-csv\", dest=\"input_csv\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--n-reports-per-address\",
+          dest=\"n_reports_per_address\", type=int, required=False, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-csv\",
+          dest=\"output_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = rtcit(**_parsed_args)\n"], "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}},
+          "inputs": [{"name": "input_csv", "type": "csv"}, {"default": "3", "name":
+          "n_reports_per_address", "optional": true, "type": "Integer"}], "name":
+          "Rtcit", "outputs": [{"name": "output_csv", "type": "csv"}]}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"n_reports_per_address": "3"}'}
+  - name: sir-combine
+    container:
+      args: [--input-min-csv, /tmp/inputs/input_min_csv/data, --input-max-csv, /tmp/inputs/input_max_csv/data,
+        --input-json, /tmp/inputs/input_json/data, --output-combined-json, /tmp/outputs/output_combined_json/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def sir_combine(input_min_csv ,
+                        input_max_csv ,
+                        input_json ,
+                        output_combined_json ):
+            import os
+            from synthguard.helper_functions import reverse_flatten, save_json, load_data_csv, load_json
+
+            # Debug input and output paths
+            input_json_path = os.path.join(input_json, 'sir-min-temp.json')
+            output_combined = 'sir-min-max-temp-synthetic.json'
+
+            print(f"input_min_csv path: {input_min_csv}")
+            print(f"input_max_csv path: {input_max_csv}")
+            print(f"input_json path: {input_json_path}")
+            print(f"output_combined_json path: {output_combined_json}")
+
+            # Load CSV data and original JSON structure
+            generated_data1 = load_data_csv(input_min_csv)
+            generated_data2 = load_data_csv(input_max_csv)
+            original_json_structure = load_json(input_json_path)
+
+            # Validate that the JSON structure is a dictionary
+            if not isinstance(original_json_structure, dict):
+                raise ValueError(f"Expected a dictionary from {input_json_path}, but got {type(original_json_structure)}")
+
+            # Reverse-flatten the generated data using the original JSON structure
+            rebuilt_data1 = reverse_flatten(generated_data1, original_json_structure)
+            rebuilt_data2 = reverse_flatten(generated_data2, original_json_structure)
+
+            # Combine the data
+            combined_data = {0: rebuilt_data1, 1: rebuilt_data2}
+
+            # Ensure output directory exists and save the combined JSON
+            os.makedirs(os.path.dirname(output_combined_json), exist_ok=True)
+            save_json(output_combined_json, output_combined, combined_data)
+
+            print(f"Merged JSON saved to {os.path.join(output_combined_json, output_combined)}")
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Sir combine', description='')
+        _parser.add_argument("--input-min-csv", dest="input_min_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-max-csv", dest="input_max_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-json", dest="input_json", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-combined-json", dest="output_combined_json", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = sir_combine(**_parsed_args)
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+    inputs:
+      artifacts:
+      - {name: sir-input-output_json, path: /tmp/inputs/input_json/data}
+      - {name: sir-generation-output_max_csv, path: /tmp/inputs/input_max_csv/data}
+      - {name: sir-generation-output_min_csv, path: /tmp/inputs/input_min_csv/data}
+    outputs:
+      artifacts:
+      - {name: sir-combine-output_combined_json, path: /tmp/outputs/output_combined_json/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-min-csv", {"inputPath": "input_min_csv"}, "--input-max-csv",
+          {"inputPath": "input_max_csv"}, "--input-json", {"inputPath": "input_json"},
+          "--output-combined-json", {"outputPath": "output_combined_json"}], "command":
+          ["sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef sir_combine(input_min_csv ,\n                input_max_csv
+          ,\n                input_json ,\n                output_combined_json ):\n    import
+          os\n    from synthguard.helper_functions import reverse_flatten, save_json,
+          load_data_csv, load_json\n\n    # Debug input and output paths\n    input_json_path
+          = os.path.join(input_json, ''sir-min-temp.json'')\n    output_combined =
+          ''sir-min-max-temp-synthetic.json''\n\n    print(f\"input_min_csv path:
+          {input_min_csv}\")\n    print(f\"input_max_csv path: {input_max_csv}\")\n    print(f\"input_json
+          path: {input_json_path}\")\n    print(f\"output_combined_json path: {output_combined_json}\")\n\n    #
+          Load CSV data and original JSON structure\n    generated_data1 = load_data_csv(input_min_csv)\n    generated_data2
+          = load_data_csv(input_max_csv)\n    original_json_structure = load_json(input_json_path)\n\n    #
+          Validate that the JSON structure is a dictionary\n    if not isinstance(original_json_structure,
+          dict):\n        raise ValueError(f\"Expected a dictionary from {input_json_path},
+          but got {type(original_json_structure)}\")\n\n    # Reverse-flatten the
+          generated data using the original JSON structure\n    rebuilt_data1 = reverse_flatten(generated_data1,
+          original_json_structure)\n    rebuilt_data2 = reverse_flatten(generated_data2,
+          original_json_structure)\n\n    # Combine the data\n    combined_data =
+          {0: rebuilt_data1, 1: rebuilt_data2}\n\n    # Ensure output directory exists
+          and save the combined JSON\n    os.makedirs(os.path.dirname(output_combined_json),
+          exist_ok=True)\n    save_json(output_combined_json, output_combined, combined_data)\n\n    print(f\"Merged
+          JSON saved to {os.path.join(output_combined_json, output_combined)}\")\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''Sir combine'', description='''')\n_parser.add_argument(\"--input-min-csv\",
+          dest=\"input_min_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-max-csv\",
+          dest=\"input_max_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-json\",
+          dest=\"input_json\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-combined-json\",
+          dest=\"output_combined_json\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = sir_combine(**_parsed_args)\n"], "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}},
+          "inputs": [{"name": "input_min_csv", "type": "csv"}, {"name": "input_max_csv",
+          "type": "csv"}, {"name": "input_json", "type": "json"}], "name": "Sir combine",
+          "outputs": [{"name": "output_combined_json", "type": "json"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: sir-diagnostic
+    container:
+      args: [--input-min-real-csv, /tmp/inputs/input_min_real_csv/data, --input-max-real-csv,
+        /tmp/inputs/input_max_real_csv/data, --input-min-synth-csv, /tmp/inputs/input_min_synth_csv/data,
+        --input-max-synth-csv, /tmp/inputs/input_max_synth_csv/data, --input-min-metadata,
+        /tmp/inputs/input_min_metadata/data, --input-max-metadata, /tmp/inputs/input_max_metadata/data,
+        --output-html, /tmp/outputs/output_html/data, '----output-paths', /tmp/outputs/mlpipeline_ui_metadata/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def sir_diagnostic(input_min_real_csv ,
+                       input_max_real_csv ,
+                       input_min_synth_csv ,
+                       input_max_synth_csv ,
+                       input_min_metadata ,
+                       input_max_metadata ,
+                       output_html )    :
+            from synthguard.diagnostic_report_generator import DiagnosticEvaluator
+            from synthguard.helper_functions import load_data_csv, load_metadata
+            import json
+
+            with open(output_html, "w") as f:
+                f.write("<html><body>")  # Start the HTML document
+
+            processed_data1 =  load_data_csv(input_min_real_csv)
+            processed_data2 = load_data_csv(input_max_real_csv)
+
+            generated_data1 = load_data_csv(input_min_synth_csv)
+            generated_data2 = load_data_csv(input_max_synth_csv)
+
+            metadata1 = load_metadata(input_min_metadata)
+            metadata2 = load_metadata(input_max_metadata)
+
+            synthetic_data_type = 'realistic'
+
+            diagnosticReportGenerator1 = DiagnosticEvaluator(real_data = processed_data1, synthetic_data = generated_data1, metadata = metadata1, method=synthetic_data_type)
+            diagnosticReportGenerator1.run_diagnostic_realistic()
+            diagnosticReportGenerator1.plot_diagnostic_report_realistic()
+            diagnosticReportGenerator1.save_plot_to_html(output_html)
+
+            diagnosticReportGenerator2 = DiagnosticEvaluator(real_data = processed_data2, synthetic_data = generated_data2, metadata = metadata2, method=synthetic_data_type)
+            diagnosticReportGenerator2.run_diagnostic_realistic()
+            diagnosticReportGenerator2.plot_diagnostic_report_realistic()
+            diagnosticReportGenerator2.save_plot_to_html(output_html)
+
+            # Read the HTML content for UI metadata
+            with open(output_html, 'r') as file:
+                html_content = file.read()
+
+            metadata = {
+                'outputs': [{
+                    'type': 'web-app',
+                    'storage': 'inline',
+                    'source': html_content,
+                }]
+            }
+
+            from collections import namedtuple
+            visualization_output = namedtuple('VisualizationOutput', ['mlpipeline_ui_metadata'])
+            return visualization_output(json.dumps(metadata))
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Sir diagnostic', description='')
+        _parser.add_argument("--input-min-real-csv", dest="input_min_real_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-max-real-csv", dest="input_max_real_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-min-synth-csv", dest="input_min_synth_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-max-synth-csv", dest="input_max_synth_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-min-metadata", dest="input_min_metadata", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-max-metadata", dest="input_max_metadata", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-html", dest="output_html", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("----output-paths", dest="_output_paths", type=str, nargs=1)
+        _parsed_args = vars(_parser.parse_args())
+        _output_files = _parsed_args.pop("_output_paths", [])
+
+        _outputs = sir_diagnostic(**_parsed_args)
+
+        _output_serializers = [
+            str,
+
+        ]
+
+        import os
+        for idx, output_file in enumerate(_output_files):
+            try:
+                os.makedirs(os.path.dirname(output_file))
+            except OSError:
+                pass
+            with open(output_file, 'w') as f:
+                f.write(_output_serializers[idx](_outputs[idx]))
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+    inputs:
+      artifacts:
+      - {name: sir-preprocess-output_max_metadata, path: /tmp/inputs/input_max_metadata/data}
+      - {name: sir-input-output_max_csv, path: /tmp/inputs/input_max_real_csv/data}
+      - {name: sir-generation-output_max_csv, path: /tmp/inputs/input_max_synth_csv/data}
+      - {name: sir-preprocess-output_min_metadata, path: /tmp/inputs/input_min_metadata/data}
+      - {name: sir-input-output_min_csv, path: /tmp/inputs/input_min_real_csv/data}
+      - {name: sir-generation-output_min_csv, path: /tmp/inputs/input_min_synth_csv/data}
+    outputs:
+      artifacts:
+      - {name: mlpipeline-ui-metadata, path: /tmp/outputs/mlpipeline_ui_metadata/data}
+      - {name: sir-diagnostic-output_html, path: /tmp/outputs/output_html/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-min-real-csv", {"inputPath": "input_min_real_csv"}, "--input-max-real-csv",
+          {"inputPath": "input_max_real_csv"}, "--input-min-synth-csv", {"inputPath":
+          "input_min_synth_csv"}, "--input-max-synth-csv", {"inputPath": "input_max_synth_csv"},
+          "--input-min-metadata", {"inputPath": "input_min_metadata"}, "--input-max-metadata",
+          {"inputPath": "input_max_metadata"}, "--output-html", {"outputPath": "output_html"},
+          "----output-paths", {"outputPath": "mlpipeline_ui_metadata"}], "command":
+          ["sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef sir_diagnostic(input_min_real_csv ,\n               input_max_real_csv
+          ,\n               input_min_synth_csv ,\n               input_max_synth_csv
+          ,\n               input_min_metadata ,\n               input_max_metadata
+          ,\n               output_html )    :\n    from synthguard.diagnostic_report_generator
+          import DiagnosticEvaluator\n    from synthguard.helper_functions import
+          load_data_csv, load_metadata\n    import json\n\n    with open(output_html,
+          \"w\") as f:\n        f.write(\"<html><body>\")  # Start the HTML document\n\n    processed_data1
+          =  load_data_csv(input_min_real_csv)\n    processed_data2 = load_data_csv(input_max_real_csv)\n\n    generated_data1
+          = load_data_csv(input_min_synth_csv)\n    generated_data2 = load_data_csv(input_max_synth_csv)\n\n    metadata1
+          = load_metadata(input_min_metadata)\n    metadata2 = load_metadata(input_max_metadata)\n\n    synthetic_data_type
+          = ''realistic''\n\n    diagnosticReportGenerator1 = DiagnosticEvaluator(real_data
+          = processed_data1, synthetic_data = generated_data1, metadata = metadata1,
+          method=synthetic_data_type)\n    diagnosticReportGenerator1.run_diagnostic_realistic()\n    diagnosticReportGenerator1.plot_diagnostic_report_realistic()\n    diagnosticReportGenerator1.save_plot_to_html(output_html)\n\n    diagnosticReportGenerator2
+          = DiagnosticEvaluator(real_data = processed_data2, synthetic_data = generated_data2,
+          metadata = metadata2, method=synthetic_data_type)\n    diagnosticReportGenerator2.run_diagnostic_realistic()\n    diagnosticReportGenerator2.plot_diagnostic_report_realistic()\n    diagnosticReportGenerator2.save_plot_to_html(output_html)\n\n    #
+          Read the HTML content for UI metadata\n    with open(output_html, ''r'')
+          as file:\n        html_content = file.read()\n\n    metadata = {\n        ''outputs'':
+          [{\n            ''type'': ''web-app'',\n            ''storage'': ''inline'',\n            ''source'':
+          html_content,\n        }]\n    }\n\n    from collections import namedtuple\n    visualization_output
+          = namedtuple(''VisualizationOutput'', [''mlpipeline_ui_metadata''])\n    return
+          visualization_output(json.dumps(metadata))\n\nimport argparse\n_parser =
+          argparse.ArgumentParser(prog=''Sir diagnostic'', description='''')\n_parser.add_argument(\"--input-min-real-csv\",
+          dest=\"input_min_real_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-max-real-csv\",
+          dest=\"input_max_real_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-min-synth-csv\",
+          dest=\"input_min_synth_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-max-synth-csv\",
+          dest=\"input_max_synth_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-min-metadata\",
+          dest=\"input_min_metadata\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-max-metadata\",
+          dest=\"input_max_metadata\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-html\",
+          dest=\"output_html\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\", dest=\"_output_paths\",
+          type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+          = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = sir_diagnostic(**_parsed_args)\n\n_output_serializers
+          = [\n    str,\n\n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+          OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+          "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}}, "inputs":
+          [{"name": "input_min_real_csv", "type": "csv"}, {"name": "input_max_real_csv",
+          "type": "csv"}, {"name": "input_min_synth_csv", "type": "csv"}, {"name":
+          "input_max_synth_csv", "type": "csv"}, {"name": "input_min_metadata", "type":
+          "json"}, {"name": "input_max_metadata", "type": "json"}], "name": "Sir diagnostic",
+          "outputs": [{"name": "output_html", "type": "html"}, {"name": "mlpipeline_ui_metadata",
+          "type": "UI_metadata"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: sir-generation
+    container:
+      args: [--n-rows, '{{inputs.parameters.n_rows}}', --input-min-csv, /tmp/inputs/input_min_csv/data,
+        --input-max-csv, /tmp/inputs/input_max_csv/data, --input-min-metadata, /tmp/inputs/input_min_metadata/data,
+        --input-max-metadata, /tmp/inputs/input_max_metadata/data, --output-min-csv,
+        /tmp/outputs/output_min_csv/data, --output-max-csv, /tmp/outputs/output_max_csv/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def sir_generation(n_rows ,
+                       input_min_csv ,
+                       input_max_csv ,
+                       input_min_metadata ,
+                       input_max_metadata ,
+                       output_min_csv,
+                       output_max_csv):
+            from synthguard.synthetic_data_generator import SyntheticDataGenerator
+            from synthguard.helper_functions import load_metadata, load_data_csv, save_to_csv
+
+            metadata1 = load_metadata(input_min_metadata)
+            metadata2 = load_metadata(input_max_metadata)
+
+            processed_data1 =  load_data_csv(input_min_csv)
+            processed_data2 = load_data_csv(input_max_csv)
+
+            N_Rows = n_rows
+            EPOCHS = 1
+            Locales = 'ee_ET'
+            synthetic_data_type = 'realistic'
+
+            syntheticDataGenerator1 = SyntheticDataGenerator(locales=Locales, n_rows=N_Rows, method=synthetic_data_type, output_csv=output_min_csv)
+            generated_data1 = syntheticDataGenerator1.generate_synthetic_data(metadata = metadata1, processed_data = processed_data1, Nepochs=EPOCHS)
+
+            syntheticDataGenerator2 = SyntheticDataGenerator(locales=Locales, n_rows=N_Rows, method=synthetic_data_type, output_csv=output_max_csv)
+            generated_data2 = syntheticDataGenerator2.generate_synthetic_data(metadata = metadata2, processed_data = processed_data2, Nepochs=EPOCHS)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Sir generation', description='')
+        _parser.add_argument("--n-rows", dest="n_rows", type=int, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-min-csv", dest="input_min_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-max-csv", dest="input_max_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-min-metadata", dest="input_min_metadata", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-max-metadata", dest="input_max_metadata", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-min-csv", dest="output_min_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-max-csv", dest="output_max_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = sir_generation(**_parsed_args)
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+    inputs:
+      parameters:
+      - {name: n_rows}
+      artifacts:
+      - {name: sir-input-output_max_csv, path: /tmp/inputs/input_max_csv/data}
+      - {name: sir-preprocess-output_max_metadata, path: /tmp/inputs/input_max_metadata/data}
+      - {name: sir-input-output_min_csv, path: /tmp/inputs/input_min_csv/data}
+      - {name: sir-preprocess-output_min_metadata, path: /tmp/inputs/input_min_metadata/data}
+    outputs:
+      artifacts:
+      - {name: sir-generation-output_max_csv, path: /tmp/outputs/output_max_csv/data}
+      - {name: sir-generation-output_min_csv, path: /tmp/outputs/output_min_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--n-rows", {"inputValue": "n_rows"}, "--input-min-csv", {"inputPath":
+          "input_min_csv"}, "--input-max-csv", {"inputPath": "input_max_csv"}, "--input-min-metadata",
+          {"inputPath": "input_min_metadata"}, "--input-max-metadata", {"inputPath":
+          "input_max_metadata"}, "--output-min-csv", {"outputPath": "output_min_csv"},
+          "--output-max-csv", {"outputPath": "output_max_csv"}], "command": ["sh",
+          "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef sir_generation(n_rows ,\n               input_min_csv ,\n               input_max_csv
+          ,\n               input_min_metadata ,\n               input_max_metadata
+          ,\n               output_min_csv,\n               output_max_csv):\n    from
+          synthguard.synthetic_data_generator import SyntheticDataGenerator\n    from
+          synthguard.helper_functions import load_metadata, load_data_csv, save_to_csv\n\n    metadata1
+          = load_metadata(input_min_metadata)\n    metadata2 = load_metadata(input_max_metadata)\n\n    processed_data1
+          =  load_data_csv(input_min_csv)\n    processed_data2 = load_data_csv(input_max_csv)\n\n    N_Rows
+          = n_rows\n    EPOCHS = 1\n    Locales = ''ee_ET''\n    synthetic_data_type
+          = ''realistic''\n\n    syntheticDataGenerator1 = SyntheticDataGenerator(locales=Locales,
+          n_rows=N_Rows, method=synthetic_data_type, output_csv=output_min_csv)\n    generated_data1
+          = syntheticDataGenerator1.generate_synthetic_data(metadata = metadata1,
+          processed_data = processed_data1, Nepochs=EPOCHS)\n\n    syntheticDataGenerator2
+          = SyntheticDataGenerator(locales=Locales, n_rows=N_Rows, method=synthetic_data_type,
+          output_csv=output_max_csv)\n    generated_data2 = syntheticDataGenerator2.generate_synthetic_data(metadata
+          = metadata2, processed_data = processed_data2, Nepochs=EPOCHS)\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''Sir generation'', description='''')\n_parser.add_argument(\"--n-rows\",
+          dest=\"n_rows\", type=int, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-min-csv\",
+          dest=\"input_min_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-max-csv\",
+          dest=\"input_max_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-min-metadata\",
+          dest=\"input_min_metadata\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-max-metadata\",
+          dest=\"input_max_metadata\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-min-csv\",
+          dest=\"output_min_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-max-csv\", dest=\"output_max_csv\",
+          type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)\n_parsed_args
+          = vars(_parser.parse_args())\n\n_outputs = sir_generation(**_parsed_args)\n"],
+          "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}}, "inputs":
+          [{"name": "n_rows", "type": "Integer"}, {"name": "input_min_csv", "type":
+          "csv"}, {"name": "input_max_csv", "type": "csv"}, {"name": "input_min_metadata",
+          "type": "json"}, {"name": "input_max_metadata", "type": "json"}], "name":
+          "Sir generation", "outputs": [{"name": "output_min_csv", "type": "csv"},
+          {"name": "output_max_csv", "type": "csv"}]}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"n_rows": "{{inputs.parameters.n_rows}}"}'}
+  - name: sir-input
+    container:
+      args: [--input-path, /mnt/data/datasets/, --output-min-csv, /tmp/outputs/output_min_csv/data,
+        --output-max-csv, /tmp/outputs/output_max_csv/data, --output-json, /tmp/outputs/output_json/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef sir_input(input_path,\n          output_min_csv , \n          output_max_csv\
+        \ ,\n          output_json ):\n    from synthguard.helper_functions import\
+        \ load_json, handle_nested_data_json, save_to_csv, save_json\n    import pandas\
+        \ as pd\n\n    file1 = 'sir-min-temp.json'\n    file2 = 'sir-max-temp.json'\n\
+        \n    real_data1 = handle_nested_data_json(pd.json_normalize(load_json(input_path\
+        \ + file1)))\n    real_data2 = handle_nested_data_json(pd.json_normalize(load_json(input_path\
+        \ + file2)))\n\n    save_to_csv(real_data1, output_min_csv)\n    save_to_csv(real_data2,\
+        \ output_max_csv)\n    save_json(output_json, file1, load_json(input_path\
+        \ + file1))\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Sir\
+        \ input', description='')\n_parser.add_argument(\"--input-path\", dest=\"\
+        input_path\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+        --output-min-csv\", dest=\"output_min_csv\", type=_make_parent_dirs_and_return_path,\
+        \ required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-max-csv\"\
+        , dest=\"output_max_csv\", type=_make_parent_dirs_and_return_path, required=True,\
+        \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-json\", dest=\"\
+        output_json\", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)\n\
+        _parsed_args = vars(_parser.parse_args())\n\n_outputs = sir_input(**_parsed_args)\n"
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+      volumeMounts:
+      - {mountPath: /mnt/data/, name: pvolume-2702e0041dc7869f5ca7fcf2de957112d15d9a932d5e274a7bf2565}
+    outputs:
+      artifacts:
+      - {name: sir-input-output_json, path: /tmp/outputs/output_json/data}
+      - {name: sir-input-output_max_csv, path: /tmp/outputs/output_max_csv/data}
+      - {name: sir-input-output_min_csv, path: /tmp/outputs/output_min_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-path", {"inputValue": "input_path"}, "--output-min-csv",
+          {"outputPath": "output_min_csv"}, "--output-max-csv", {"outputPath": "output_max_csv"},
+          "--output-json", {"outputPath": "output_json"}], "command": ["sh", "-ec",
+          "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef sir_input(input_path,\n          output_min_csv , \n          output_max_csv
+          ,\n          output_json ):\n    from synthguard.helper_functions import
+          load_json, handle_nested_data_json, save_to_csv, save_json\n    import pandas
+          as pd\n\n    file1 = ''sir-min-temp.json''\n    file2 = ''sir-max-temp.json''\n\n    real_data1
+          = handle_nested_data_json(pd.json_normalize(load_json(input_path + file1)))\n    real_data2
+          = handle_nested_data_json(pd.json_normalize(load_json(input_path + file2)))\n\n    save_to_csv(real_data1,
+          output_min_csv)\n    save_to_csv(real_data2, output_max_csv)\n    save_json(output_json,
+          file1, load_json(input_path + file1))\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Sir
+          input'', description='''')\n_parser.add_argument(\"--input-path\", dest=\"input_path\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-min-csv\",
+          dest=\"output_min_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-max-csv\", dest=\"output_max_csv\",
+          type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-json\",
+          dest=\"output_json\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = sir_input(**_parsed_args)\n"], "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}},
+          "inputs": [{"name": "input_path", "type": "String"}], "name": "Sir input",
+          "outputs": [{"name": "output_min_csv", "type": "csv"}, {"name": "output_max_csv",
+          "type": "csv"}, {"name": "output_json", "type": "json"}]}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"input_path": "/mnt/data/datasets/"}'}
+    volumes:
+    - name: pvolume-2702e0041dc7869f5ca7fcf2de957112d15d9a932d5e274a7bf2565
+      persistentVolumeClaim: {claimName: my-pvc}
+  - name: sir-preprocess
+    container:
+      args: [--input-min-csv, /tmp/inputs/input_min_csv/data, --input-max-csv, /tmp/inputs/input_max_csv/data,
+        --output-min-metadata, /tmp/outputs/output_min_metadata/data, --output-max-metadata,
+        /tmp/outputs/output_max_metadata/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef sir_preprocess(input_min_csv , \n               input_max_csv ,\n  \
+        \             output_min_metadata ,\n               output_max_metadata ):\n\
+        \    from synthguard.data_preprocessor import DataPreprocessor\n    from synthguard.helper_functions\
+        \ import save_metadata, load_data_csv\n\n    real_data1 = load_data_csv(input_min_csv)\n\
+        \    real_data2 = load_data_csv(input_max_csv)\n\n    dataPreprocessor1 =\
+        \ DataPreprocessor(data = real_data1)\n    processed_data1, metadata1 = dataPreprocessor1.preprocess_data()\n\
+        \    save_metadata(metadata1, output_min_metadata)\n\n    dataPreprocessor2\
+        \ = DataPreprocessor(data = real_data2)\n    processed_data2, metadata2 =\
+        \ dataPreprocessor2.preprocess_data()\n    save_metadata(metadata2, output_max_metadata)\n\
+        \nimport argparse\n_parser = argparse.ArgumentParser(prog='Sir preprocess',\
+        \ description='')\n_parser.add_argument(\"--input-min-csv\", dest=\"input_min_csv\"\
+        , type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+        --input-max-csv\", dest=\"input_max_csv\", type=str, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--output-min-metadata\", dest=\"output_min_metadata\"\
+        , type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--output-max-metadata\", dest=\"output_max_metadata\"\
+        , type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)\n\
+        _parsed_args = vars(_parser.parse_args())\n\n_outputs = sir_preprocess(**_parsed_args)\n"
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+    inputs:
+      artifacts:
+      - {name: sir-input-output_max_csv, path: /tmp/inputs/input_max_csv/data}
+      - {name: sir-input-output_min_csv, path: /tmp/inputs/input_min_csv/data}
+    outputs:
+      artifacts:
+      - {name: sir-preprocess-output_max_metadata, path: /tmp/outputs/output_max_metadata/data}
+      - {name: sir-preprocess-output_min_metadata, path: /tmp/outputs/output_min_metadata/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-min-csv", {"inputPath": "input_min_csv"}, "--input-max-csv",
+          {"inputPath": "input_max_csv"}, "--output-min-metadata", {"outputPath":
+          "output_min_metadata"}, "--output-max-metadata", {"outputPath": "output_max_metadata"}],
+          "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\" >
+          \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef sir_preprocess(input_min_csv , \n               input_max_csv
+          ,\n               output_min_metadata ,\n               output_max_metadata
+          ):\n    from synthguard.data_preprocessor import DataPreprocessor\n    from
+          synthguard.helper_functions import save_metadata, load_data_csv\n\n    real_data1
+          = load_data_csv(input_min_csv)\n    real_data2 = load_data_csv(input_max_csv)\n\n    dataPreprocessor1
+          = DataPreprocessor(data = real_data1)\n    processed_data1, metadata1 =
+          dataPreprocessor1.preprocess_data()\n    save_metadata(metadata1, output_min_metadata)\n\n    dataPreprocessor2
+          = DataPreprocessor(data = real_data2)\n    processed_data2, metadata2 =
+          dataPreprocessor2.preprocess_data()\n    save_metadata(metadata2, output_max_metadata)\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''Sir preprocess'', description='''')\n_parser.add_argument(\"--input-min-csv\",
+          dest=\"input_min_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-max-csv\",
+          dest=\"input_max_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-min-metadata\",
+          dest=\"output_min_metadata\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-max-metadata\",
+          dest=\"output_max_metadata\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = sir_preprocess(**_parsed_args)\n"], "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}},
+          "inputs": [{"name": "input_min_csv", "type": "csv"}, {"name": "input_max_csv",
+          "type": "csv"}], "name": "Sir preprocess", "outputs": [{"name": "output_min_metadata",
+          "type": "json"}, {"name": "output_max_metadata", "type": "json"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: sir-privacy
+    container:
+      args: [--input-min-real-csv, /tmp/inputs/input_min_real_csv/data, --input-max-real-csv,
+        /tmp/inputs/input_max_real_csv/data, --input-min-synth-csv, /tmp/inputs/input_min_synth_csv/data,
+        --input-max-synth-csv, /tmp/inputs/input_max_synth_csv/data, --input-min-metadata,
+        /tmp/inputs/input_min_metadata/data, --input-max-metadata, /tmp/inputs/input_max_metadata/data,
+        --output-html, /tmp/outputs/output_html/data, '----output-paths', /tmp/outputs/mlpipeline_ui_metadata/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef sir_privacy(input_min_real_csv ,\n               input_max_real_csv\
+        \ ,\n               input_min_synth_csv ,\n               input_max_synth_csv\
+        \ ,\n               input_min_metadata ,\n               input_max_metadata\
+        \ ,\n               output_html )    :\n    from synthguard.privacy_report_generator\
+        \ import PrivacyRiskEvaluator\n    from synthguard.helper_functions import\
+        \ load_data_csv, load_metadata\n    import json\n\n    with open(output_html,\
+        \ \"w\") as f:\n        f.write(\"<html><body>\")  # Start the HTML document\n\
+        \n    processed_data1 =  load_data_csv(input_min_real_csv)\n    processed_data2\
+        \ = load_data_csv(input_max_real_csv)\n\n    generated_data1 = load_data_csv(input_min_synth_csv)\n\
+        \    generated_data2 = load_data_csv(input_max_synth_csv)\n\n    metadata1\
+        \ = load_metadata(input_min_metadata)\n    metadata2 = load_metadata(input_max_metadata)\n\
+        \n    synthetic_data_type = 'realistic'    \n\n    privacyRiskEvaluator1 =\
+        \ PrivacyRiskEvaluator(real_data = processed_data1, synthetic_data = generated_data1,\
+        \ metadata = metadata1, method=synthetic_data_type)\n    privacyRiskEvaluator1.run_privacy_realistic()\n\
+        \    privacyRiskEvaluator1.plot_privacy_metrics_realistic()\n    privacyRiskEvaluator1.save_plot_to_html(output_html)\n\
+        \n    privacyRiskEvaluator2 = PrivacyRiskEvaluator(real_data = processed_data2,\
+        \ synthetic_data = generated_data2, metadata = metadata2, method=synthetic_data_type)\
+        \       \n    privacyRiskEvaluator2.run_privacy_realistic()\n    privacyRiskEvaluator2.plot_privacy_metrics_realistic()\n\
+        \    privacyRiskEvaluator2.save_plot_to_html(output_html)\n        # Read\
+        \ the HTML content for UI metadata\n    with open(output_html, 'r') as file:\n\
+        \        html_content = file.read()\n\n    metadata = {\n        'outputs':\
+        \ [{\n            'type': 'web-app',\n            'storage': 'inline',\n \
+        \           'source': html_content,\n        }]\n    }\n\n    from collections\
+        \ import namedtuple\n    visualization_output = namedtuple('VisualizationOutput',\
+        \ ['mlpipeline_ui_metadata'])\n    return visualization_output(json.dumps(metadata))\n\
+        \nimport argparse\n_parser = argparse.ArgumentParser(prog='Sir privacy', description='')\n\
+        _parser.add_argument(\"--input-min-real-csv\", dest=\"input_min_real_csv\"\
+        , type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+        --input-max-real-csv\", dest=\"input_max_real_csv\", type=str, required=True,\
+        \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-min-synth-csv\"\
+        , dest=\"input_min_synth_csv\", type=str, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--input-max-synth-csv\", dest=\"input_max_synth_csv\"\
+        , type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+        --input-min-metadata\", dest=\"input_min_metadata\", type=str, required=True,\
+        \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-max-metadata\"\
+        , dest=\"input_max_metadata\", type=str, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--output-html\", dest=\"output_html\", type=_make_parent_dirs_and_return_path,\
+        \ required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\"\
+        , dest=\"_output_paths\", type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n\
+        _output_files = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = sir_privacy(**_parsed_args)\n\
+        \n_output_serializers = [\n    str,\n\n]\n\nimport os\nfor idx, output_file\
+        \ in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n\
+        \    except OSError:\n        pass\n    with open(output_file, 'w') as f:\n\
+        \        f.write(_output_serializers[idx](_outputs[idx]))\n"
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+    inputs:
+      artifacts:
+      - {name: sir-preprocess-output_max_metadata, path: /tmp/inputs/input_max_metadata/data}
+      - {name: sir-input-output_max_csv, path: /tmp/inputs/input_max_real_csv/data}
+      - {name: sir-generation-output_max_csv, path: /tmp/inputs/input_max_synth_csv/data}
+      - {name: sir-preprocess-output_min_metadata, path: /tmp/inputs/input_min_metadata/data}
+      - {name: sir-input-output_min_csv, path: /tmp/inputs/input_min_real_csv/data}
+      - {name: sir-generation-output_min_csv, path: /tmp/inputs/input_min_synth_csv/data}
+    outputs:
+      artifacts:
+      - {name: mlpipeline-ui-metadata, path: /tmp/outputs/mlpipeline_ui_metadata/data}
+      - {name: sir-privacy-output_html, path: /tmp/outputs/output_html/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-min-real-csv", {"inputPath": "input_min_real_csv"}, "--input-max-real-csv",
+          {"inputPath": "input_max_real_csv"}, "--input-min-synth-csv", {"inputPath":
+          "input_min_synth_csv"}, "--input-max-synth-csv", {"inputPath": "input_max_synth_csv"},
+          "--input-min-metadata", {"inputPath": "input_min_metadata"}, "--input-max-metadata",
+          {"inputPath": "input_max_metadata"}, "--output-html", {"outputPath": "output_html"},
+          "----output-paths", {"outputPath": "mlpipeline_ui_metadata"}], "command":
+          ["sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef sir_privacy(input_min_real_csv ,\n               input_max_real_csv
+          ,\n               input_min_synth_csv ,\n               input_max_synth_csv
+          ,\n               input_min_metadata ,\n               input_max_metadata
+          ,\n               output_html )    :\n    from synthguard.privacy_report_generator
+          import PrivacyRiskEvaluator\n    from synthguard.helper_functions import
+          load_data_csv, load_metadata\n    import json\n\n    with open(output_html,
+          \"w\") as f:\n        f.write(\"<html><body>\")  # Start the HTML document\n\n    processed_data1
+          =  load_data_csv(input_min_real_csv)\n    processed_data2 = load_data_csv(input_max_real_csv)\n\n    generated_data1
+          = load_data_csv(input_min_synth_csv)\n    generated_data2 = load_data_csv(input_max_synth_csv)\n\n    metadata1
+          = load_metadata(input_min_metadata)\n    metadata2 = load_metadata(input_max_metadata)\n\n    synthetic_data_type
+          = ''realistic''    \n\n    privacyRiskEvaluator1 = PrivacyRiskEvaluator(real_data
+          = processed_data1, synthetic_data = generated_data1, metadata = metadata1,
+          method=synthetic_data_type)\n    privacyRiskEvaluator1.run_privacy_realistic()\n    privacyRiskEvaluator1.plot_privacy_metrics_realistic()\n    privacyRiskEvaluator1.save_plot_to_html(output_html)\n\n    privacyRiskEvaluator2
+          = PrivacyRiskEvaluator(real_data = processed_data2, synthetic_data = generated_data2,
+          metadata = metadata2, method=synthetic_data_type)       \n    privacyRiskEvaluator2.run_privacy_realistic()\n    privacyRiskEvaluator2.plot_privacy_metrics_realistic()\n    privacyRiskEvaluator2.save_plot_to_html(output_html)\n        #
+          Read the HTML content for UI metadata\n    with open(output_html, ''r'')
+          as file:\n        html_content = file.read()\n\n    metadata = {\n        ''outputs'':
+          [{\n            ''type'': ''web-app'',\n            ''storage'': ''inline'',\n            ''source'':
+          html_content,\n        }]\n    }\n\n    from collections import namedtuple\n    visualization_output
+          = namedtuple(''VisualizationOutput'', [''mlpipeline_ui_metadata''])\n    return
+          visualization_output(json.dumps(metadata))\n\nimport argparse\n_parser =
+          argparse.ArgumentParser(prog=''Sir privacy'', description='''')\n_parser.add_argument(\"--input-min-real-csv\",
+          dest=\"input_min_real_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-max-real-csv\",
+          dest=\"input_max_real_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-min-synth-csv\",
+          dest=\"input_min_synth_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-max-synth-csv\",
+          dest=\"input_max_synth_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-min-metadata\",
+          dest=\"input_min_metadata\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-max-metadata\",
+          dest=\"input_max_metadata\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-html\",
+          dest=\"output_html\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\", dest=\"_output_paths\",
+          type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+          = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = sir_privacy(**_parsed_args)\n\n_output_serializers
+          = [\n    str,\n\n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+          OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+          "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}}, "inputs":
+          [{"name": "input_min_real_csv", "type": "csv"}, {"name": "input_max_real_csv",
+          "type": "csv"}, {"name": "input_min_synth_csv", "type": "csv"}, {"name":
+          "input_max_synth_csv", "type": "csv"}, {"name": "input_min_metadata", "type":
+          "json"}, {"name": "input_max_metadata", "type": "json"}], "name": "Sir privacy",
+          "outputs": [{"name": "output_html", "type": "html"}, {"name": "mlpipeline_ui_metadata",
+          "type": "UI_metadata"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: sir-quality
+    container:
+      args: [--input-min-real-csv, /tmp/inputs/input_min_real_csv/data, --input-max-real-csv,
+        /tmp/inputs/input_max_real_csv/data, --input-min-synth-csv, /tmp/inputs/input_min_synth_csv/data,
+        --input-max-synth-csv, /tmp/inputs/input_max_synth_csv/data, --input-min-metadata,
+        /tmp/inputs/input_min_metadata/data, --input-max-metadata, /tmp/inputs/input_max_metadata/data,
+        --output-html, /tmp/outputs/output_html/data, '----output-paths', /tmp/outputs/mlpipeline_ui_metadata/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def sir_quality(input_min_real_csv ,
+                       input_max_real_csv ,
+                       input_min_synth_csv ,
+                       input_max_synth_csv ,
+                       input_min_metadata ,
+                       input_max_metadata ,
+                       output_html )    :
+            from synthguard.quality_report_generator import DataQualityEvaluator
+            from synthguard.helper_functions import load_data_csv, load_metadata
+            import json
+
+            with open(output_html, "w") as f:
+                f.write("<html><body>")  # Start the HTML document
+
+            processed_data1 =  load_data_csv(input_min_real_csv)
+            processed_data2 = load_data_csv(input_max_real_csv)
+
+            generated_data1 = load_data_csv(input_min_synth_csv)
+            generated_data2 = load_data_csv(input_max_synth_csv)
+
+            metadata1 = load_metadata(input_min_metadata)
+            metadata2 = load_metadata(input_max_metadata)
+
+            synthetic_data_type = 'realistic'
+
+            dataQualityEvaluator1 = DataQualityEvaluator(real_data = processed_data1, synthetic_data = generated_data1, metadata = metadata1, method=synthetic_data_type)
+            dataQualityEvaluator1.evaluate_quality()
+            dataQualityEvaluator1.plot_quality_report_realistic()
+            dataQualityEvaluator1.save_plot_to_html(output_html)
+
+            dataQualityEvaluator2 = DataQualityEvaluator(real_data = processed_data2, synthetic_data = generated_data2, metadata = metadata2, method=synthetic_data_type)
+            dataQualityEvaluator2.evaluate_quality()
+            dataQualityEvaluator2.plot_quality_report_realistic()
+            dataQualityEvaluator2.save_plot_to_html(output_html)
+
+            # Read the HTML content for UI metadata
+            with open(output_html, 'r') as file:
+                html_content = file.read()
+
+            metadata = {
+                'outputs': [{
+                    'type': 'web-app',
+                    'storage': 'inline',
+                    'source': html_content,
+                }]
+            }
+
+            from collections import namedtuple
+            visualization_output = namedtuple('VisualizationOutput', ['mlpipeline_ui_metadata'])
+            return visualization_output(json.dumps(metadata))
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Sir quality', description='')
+        _parser.add_argument("--input-min-real-csv", dest="input_min_real_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-max-real-csv", dest="input_max_real_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-min-synth-csv", dest="input_min_synth_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-max-synth-csv", dest="input_max_synth_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-min-metadata", dest="input_min_metadata", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-max-metadata", dest="input_max_metadata", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-html", dest="output_html", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("----output-paths", dest="_output_paths", type=str, nargs=1)
+        _parsed_args = vars(_parser.parse_args())
+        _output_files = _parsed_args.pop("_output_paths", [])
+
+        _outputs = sir_quality(**_parsed_args)
+
+        _output_serializers = [
+            str,
+
+        ]
+
+        import os
+        for idx, output_file in enumerate(_output_files):
+            try:
+                os.makedirs(os.path.dirname(output_file))
+            except OSError:
+                pass
+            with open(output_file, 'w') as f:
+                f.write(_output_serializers[idx](_outputs[idx]))
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+    inputs:
+      artifacts:
+      - {name: sir-preprocess-output_max_metadata, path: /tmp/inputs/input_max_metadata/data}
+      - {name: sir-input-output_max_csv, path: /tmp/inputs/input_max_real_csv/data}
+      - {name: sir-generation-output_max_csv, path: /tmp/inputs/input_max_synth_csv/data}
+      - {name: sir-preprocess-output_min_metadata, path: /tmp/inputs/input_min_metadata/data}
+      - {name: sir-input-output_min_csv, path: /tmp/inputs/input_min_real_csv/data}
+      - {name: sir-generation-output_min_csv, path: /tmp/inputs/input_min_synth_csv/data}
+    outputs:
+      artifacts:
+      - {name: mlpipeline-ui-metadata, path: /tmp/outputs/mlpipeline_ui_metadata/data}
+      - {name: sir-quality-output_html, path: /tmp/outputs/output_html/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-min-real-csv", {"inputPath": "input_min_real_csv"}, "--input-max-real-csv",
+          {"inputPath": "input_max_real_csv"}, "--input-min-synth-csv", {"inputPath":
+          "input_min_synth_csv"}, "--input-max-synth-csv", {"inputPath": "input_max_synth_csv"},
+          "--input-min-metadata", {"inputPath": "input_min_metadata"}, "--input-max-metadata",
+          {"inputPath": "input_max_metadata"}, "--output-html", {"outputPath": "output_html"},
+          "----output-paths", {"outputPath": "mlpipeline_ui_metadata"}], "command":
+          ["sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef sir_quality(input_min_real_csv ,\n               input_max_real_csv
+          ,\n               input_min_synth_csv ,\n               input_max_synth_csv
+          ,\n               input_min_metadata ,\n               input_max_metadata
+          ,\n               output_html )    :\n    from synthguard.quality_report_generator
+          import DataQualityEvaluator\n    from synthguard.helper_functions import
+          load_data_csv, load_metadata\n    import json\n\n    with open(output_html,
+          \"w\") as f:\n        f.write(\"<html><body>\")  # Start the HTML document\n\n    processed_data1
+          =  load_data_csv(input_min_real_csv)\n    processed_data2 = load_data_csv(input_max_real_csv)\n\n    generated_data1
+          = load_data_csv(input_min_synth_csv)\n    generated_data2 = load_data_csv(input_max_synth_csv)\n\n    metadata1
+          = load_metadata(input_min_metadata)\n    metadata2 = load_metadata(input_max_metadata)\n\n    synthetic_data_type
+          = ''realistic''\n\n    dataQualityEvaluator1 = DataQualityEvaluator(real_data
+          = processed_data1, synthetic_data = generated_data1, metadata = metadata1,
+          method=synthetic_data_type)\n    dataQualityEvaluator1.evaluate_quality()\n    dataQualityEvaluator1.plot_quality_report_realistic()\n    dataQualityEvaluator1.save_plot_to_html(output_html)\n\n    dataQualityEvaluator2
+          = DataQualityEvaluator(real_data = processed_data2, synthetic_data = generated_data2,
+          metadata = metadata2, method=synthetic_data_type)\n    dataQualityEvaluator2.evaluate_quality()\n    dataQualityEvaluator2.plot_quality_report_realistic()\n    dataQualityEvaluator2.save_plot_to_html(output_html)\n\n    #
+          Read the HTML content for UI metadata\n    with open(output_html, ''r'')
+          as file:\n        html_content = file.read()\n\n    metadata = {\n        ''outputs'':
+          [{\n            ''type'': ''web-app'',\n            ''storage'': ''inline'',\n            ''source'':
+          html_content,\n        }]\n    }\n\n    from collections import namedtuple\n    visualization_output
+          = namedtuple(''VisualizationOutput'', [''mlpipeline_ui_metadata''])\n    return
+          visualization_output(json.dumps(metadata))\n\nimport argparse\n_parser =
+          argparse.ArgumentParser(prog=''Sir quality'', description='''')\n_parser.add_argument(\"--input-min-real-csv\",
+          dest=\"input_min_real_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-max-real-csv\",
+          dest=\"input_max_real_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-min-synth-csv\",
+          dest=\"input_min_synth_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-max-synth-csv\",
+          dest=\"input_max_synth_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-min-metadata\",
+          dest=\"input_min_metadata\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-max-metadata\",
+          dest=\"input_max_metadata\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-html\",
+          dest=\"output_html\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\", dest=\"_output_paths\",
+          type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+          = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = sir_quality(**_parsed_args)\n\n_output_serializers
+          = [\n    str,\n\n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+          OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+          "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}}, "inputs":
+          [{"name": "input_min_real_csv", "type": "csv"}, {"name": "input_max_real_csv",
+          "type": "csv"}, {"name": "input_min_synth_csv", "type": "csv"}, {"name":
+          "input_max_synth_csv", "type": "csv"}, {"name": "input_min_metadata", "type":
+          "json"}, {"name": "input_max_metadata", "type": "json"}], "name": "Sir quality",
+          "outputs": [{"name": "output_html", "type": "html"}, {"name": "mlpipeline_ui_metadata",
+          "type": "UI_metadata"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: test-teadal-pipeline
+    inputs:
+      parameters:
+      - {name: n_rows}
+    dag:
+      tasks:
+      - name: arpat-preprocessor
+        template: arpat-preprocessor
+        dependencies: [load-arpat]
+        arguments:
+          artifacts:
+          - {name: load-arpat-output_pm10_csv, from: '{{tasks.load-arpat.outputs.artifacts.load-arpat-output_pm10_csv}}'}
+          - {name: load-arpat-output_pm25_csv, from: '{{tasks.load-arpat.outputs.artifacts.load-arpat-output_pm25_csv}}'}
+      - name: arpat10-generation
+        template: arpat10-generation
+        dependencies: [arpat-preprocessor]
+        arguments:
+          parameters:
+          - {name: n_rows, value: '{{inputs.parameters.n_rows}}'}
+          artifacts:
+          - {name: arpat-preprocessor-output_pm10_csv, from: '{{tasks.arpat-preprocessor.outputs.artifacts.arpat-preprocessor-output_pm10_csv}}'}
+          - {name: arpat-preprocessor-output_pm10_metadata, from: '{{tasks.arpat-preprocessor.outputs.artifacts.arpat-preprocessor-output_pm10_metadata}}'}
+      - name: arpat25-generation
+        template: arpat25-generation
+        dependencies: [arpat-preprocessor]
+        arguments:
+          parameters:
+          - {name: n_rows, value: '{{inputs.parameters.n_rows}}'}
+          artifacts:
+          - {name: arpat-preprocessor-output_pm25_csv, from: '{{tasks.arpat-preprocessor.outputs.artifacts.arpat-preprocessor-output_pm25_csv}}'}
+          - {name: arpat-preprocessor-output_pm25_metadata, from: '{{tasks.arpat-preprocessor.outputs.artifacts.arpat-preprocessor-output_pm25_metadata}}'}
+      - {name: box2m, template: box2m}
+      - name: generate-addresses
+        template: generate-addresses
+        dependencies: [load-streets-and-municipalities]
+        arguments:
+          parameters:
+          - {name: load-streets-and-municipalities-Output, value: '{{tasks.load-streets-and-municipalities.outputs.parameters.load-streets-and-municipalities-Output}}'}
+          - {name: n_rows, value: '{{inputs.parameters.n_rows}}'}
+      - {name: load-arpat, template: load-arpat}
+      - {name: load-streets-and-municipalities, template: load-streets-and-municipalities}
+      - name: rtape
+        template: rtape
+        dependencies: [rtcit]
+        arguments:
+          artifacts:
+          - {name: rtcit-output_csv, from: '{{tasks.rtcit.outputs.artifacts.rtcit-output_csv}}'}
+      - name: rtcit
+        template: rtcit
+        dependencies: [generate-addresses]
+        arguments:
+          artifacts:
+          - {name: generate-addresses-output_csv, from: '{{tasks.generate-addresses.outputs.artifacts.generate-addresses-output_csv}}'}
+      - name: sir-combine
+        template: sir-combine
+        dependencies: [sir-generation, sir-input]
+        arguments:
+          artifacts:
+          - {name: sir-generation-output_max_csv, from: '{{tasks.sir-generation.outputs.artifacts.sir-generation-output_max_csv}}'}
+          - {name: sir-generation-output_min_csv, from: '{{tasks.sir-generation.outputs.artifacts.sir-generation-output_min_csv}}'}
+          - {name: sir-input-output_json, from: '{{tasks.sir-input.outputs.artifacts.sir-input-output_json}}'}
+      - name: sir-diagnostic
+        template: sir-diagnostic
+        dependencies: [sir-generation, sir-input, sir-preprocess]
+        arguments:
+          artifacts:
+          - {name: sir-generation-output_max_csv, from: '{{tasks.sir-generation.outputs.artifacts.sir-generation-output_max_csv}}'}
+          - {name: sir-generation-output_min_csv, from: '{{tasks.sir-generation.outputs.artifacts.sir-generation-output_min_csv}}'}
+          - {name: sir-input-output_max_csv, from: '{{tasks.sir-input.outputs.artifacts.sir-input-output_max_csv}}'}
+          - {name: sir-input-output_min_csv, from: '{{tasks.sir-input.outputs.artifacts.sir-input-output_min_csv}}'}
+          - {name: sir-preprocess-output_max_metadata, from: '{{tasks.sir-preprocess.outputs.artifacts.sir-preprocess-output_max_metadata}}'}
+          - {name: sir-preprocess-output_min_metadata, from: '{{tasks.sir-preprocess.outputs.artifacts.sir-preprocess-output_min_metadata}}'}
+      - name: sir-generation
+        template: sir-generation
+        dependencies: [sir-input, sir-preprocess]
+        arguments:
+          parameters:
+          - {name: n_rows, value: '{{inputs.parameters.n_rows}}'}
+          artifacts:
+          - {name: sir-input-output_max_csv, from: '{{tasks.sir-input.outputs.artifacts.sir-input-output_max_csv}}'}
+          - {name: sir-input-output_min_csv, from: '{{tasks.sir-input.outputs.artifacts.sir-input-output_min_csv}}'}
+          - {name: sir-preprocess-output_max_metadata, from: '{{tasks.sir-preprocess.outputs.artifacts.sir-preprocess-output_max_metadata}}'}
+          - {name: sir-preprocess-output_min_metadata, from: '{{tasks.sir-preprocess.outputs.artifacts.sir-preprocess-output_min_metadata}}'}
+      - {name: sir-input, template: sir-input}
+      - name: sir-preprocess
+        template: sir-preprocess
+        dependencies: [sir-input]
+        arguments:
+          artifacts:
+          - {name: sir-input-output_max_csv, from: '{{tasks.sir-input.outputs.artifacts.sir-input-output_max_csv}}'}
+          - {name: sir-input-output_min_csv, from: '{{tasks.sir-input.outputs.artifacts.sir-input-output_min_csv}}'}
+      - name: sir-privacy
+        template: sir-privacy
+        dependencies: [sir-generation, sir-input, sir-preprocess]
+        arguments:
+          artifacts:
+          - {name: sir-generation-output_max_csv, from: '{{tasks.sir-generation.outputs.artifacts.sir-generation-output_max_csv}}'}
+          - {name: sir-generation-output_min_csv, from: '{{tasks.sir-generation.outputs.artifacts.sir-generation-output_min_csv}}'}
+          - {name: sir-input-output_max_csv, from: '{{tasks.sir-input.outputs.artifacts.sir-input-output_max_csv}}'}
+          - {name: sir-input-output_min_csv, from: '{{tasks.sir-input.outputs.artifacts.sir-input-output_min_csv}}'}
+          - {name: sir-preprocess-output_max_metadata, from: '{{tasks.sir-preprocess.outputs.artifacts.sir-preprocess-output_max_metadata}}'}
+          - {name: sir-preprocess-output_min_metadata, from: '{{tasks.sir-preprocess.outputs.artifacts.sir-preprocess-output_min_metadata}}'}
+      - name: sir-quality
+        template: sir-quality
+        dependencies: [sir-generation, sir-input, sir-preprocess]
+        arguments:
+          artifacts:
+          - {name: sir-generation-output_max_csv, from: '{{tasks.sir-generation.outputs.artifacts.sir-generation-output_max_csv}}'}
+          - {name: sir-generation-output_min_csv, from: '{{tasks.sir-generation.outputs.artifacts.sir-generation-output_min_csv}}'}
+          - {name: sir-input-output_max_csv, from: '{{tasks.sir-input.outputs.artifacts.sir-input-output_max_csv}}'}
+          - {name: sir-input-output_min_csv, from: '{{tasks.sir-input.outputs.artifacts.sir-input-output_min_csv}}'}
+          - {name: sir-preprocess-output_max_metadata, from: '{{tasks.sir-preprocess.outputs.artifacts.sir-preprocess-output_max_metadata}}'}
+          - {name: sir-preprocess-output_min_metadata, from: '{{tasks.sir-preprocess.outputs.artifacts.sir-preprocess-output_min_metadata}}'}
+      - name: zip-files
+        template: zip-files
+        dependencies: [arpat10-generation, arpat25-generation, box2m, rtape, rtcit,
+          sir-combine]
+        arguments:
+          artifacts:
+          - {name: arpat10-generation-output_csv, from: '{{tasks.arpat10-generation.outputs.artifacts.arpat10-generation-output_csv}}'}
+          - {name: arpat25-generation-output_csv, from: '{{tasks.arpat25-generation.outputs.artifacts.arpat25-generation-output_csv}}'}
+          - {name: box2m-output_json, from: '{{tasks.box2m.outputs.artifacts.box2m-output_json}}'}
+          - {name: rtape-output_zip, from: '{{tasks.rtape.outputs.artifacts.rtape-output_zip}}'}
+          - {name: rtcit-output_csv, from: '{{tasks.rtcit.outputs.artifacts.rtcit-output_csv}}'}
+          - {name: sir-combine-output_combined_json, from: '{{tasks.sir-combine.outputs.artifacts.sir-combine-output_combined_json}}'}
+  - name: zip-files
+    container:
+      args: [--rt-cit, /tmp/inputs/rt_cit/data, --rt-ape, /tmp/inputs/rt_ape/data,
+        --sir-temp, /tmp/inputs/sir_temp/data, --arpat25, /tmp/inputs/arpat25/data,
+        --arpat10, /tmp/inputs/arpat10/data, --box2m, /tmp/inputs/box2m/data, --output,
+        /tmp/outputs/output/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef zip_files(rt_cit , \n              rt_ape , \n              sir_temp\
+        \ , \n              arpat25 , \n              arpat10 ,\n              box2m\
+        \ ,\n              output ):\n    from synthguard.helper_functions import\
+        \ zip_files\n\n    files_to_be_zipped = [\n        rt_cit,\n        rt_ape,\n\
+        \        sir_temp,\n        arpat25,\n        arpat10,\n        box2m\n  \
+        \  ]\n\n    zip_files(files_to_be_zipped, output)\n\nimport argparse\n_parser\
+        \ = argparse.ArgumentParser(prog='Zip files', description='')\n_parser.add_argument(\"\
+        --rt-cit\", dest=\"rt_cit\", type=str, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--rt-ape\", dest=\"rt_ape\", type=str, required=True,\
+        \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--sir-temp\", dest=\"\
+        sir_temp\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+        --arpat25\", dest=\"arpat25\", type=str, required=True, default=argparse.SUPPRESS)\n\
+        _parser.add_argument(\"--arpat10\", dest=\"arpat10\", type=str, required=True,\
+        \ default=argparse.SUPPRESS)\n_parser.add_argument(\"--box2m\", dest=\"box2m\"\
+        , type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+        --output\", dest=\"output\", type=_make_parent_dirs_and_return_path, required=True,\
+        \ default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n\
+        _outputs = zip_files(**_parsed_args)\n"
+      image: gitlab.ext.cyber.ee:5050/exai/synthguard:latest
+    inputs:
+      artifacts:
+      - {name: arpat10-generation-output_csv, path: /tmp/inputs/arpat10/data}
+      - {name: arpat25-generation-output_csv, path: /tmp/inputs/arpat25/data}
+      - {name: box2m-output_json, path: /tmp/inputs/box2m/data}
+      - {name: rtape-output_zip, path: /tmp/inputs/rt_ape/data}
+      - {name: rtcit-output_csv, path: /tmp/inputs/rt_cit/data}
+      - {name: sir-combine-output_combined_json, path: /tmp/inputs/sir_temp/data}
+    outputs:
+      artifacts:
+      - {name: zip-files-output, path: /tmp/outputs/output/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--rt-cit", {"inputPath": "rt_cit"}, "--rt-ape", {"inputPath":
+          "rt_ape"}, "--sir-temp", {"inputPath": "sir_temp"}, "--arpat25", {"inputPath":
+          "arpat25"}, "--arpat10", {"inputPath": "arpat10"}, "--box2m", {"inputPath":
+          "box2m"}, "--output", {"outputPath": "output"}], "command": ["sh", "-ec",
+          "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef zip_files(rt_cit , \n              rt_ape , \n              sir_temp
+          , \n              arpat25 , \n              arpat10 ,\n              box2m
+          ,\n              output ):\n    from synthguard.helper_functions import
+          zip_files\n\n    files_to_be_zipped = [\n        rt_cit,\n        rt_ape,\n        sir_temp,\n        arpat25,\n        arpat10,\n        box2m\n    ]\n\n    zip_files(files_to_be_zipped,
+          output)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Zip
+          files'', description='''')\n_parser.add_argument(\"--rt-cit\", dest=\"rt_cit\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--rt-ape\",
+          dest=\"rt_ape\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--sir-temp\",
+          dest=\"sir_temp\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--arpat25\",
+          dest=\"arpat25\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--arpat10\",
+          dest=\"arpat10\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--box2m\",
+          dest=\"box2m\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output\",
+          dest=\"output\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = zip_files(**_parsed_args)\n"], "image": "gitlab.ext.cyber.ee:5050/exai/synthguard:latest"}},
+          "inputs": [{"name": "rt_cit", "type": "csv"}, {"name": "rt_ape", "type":
+          "zip"}, {"name": "sir_temp", "type": "json"}, {"name": "arpat25", "type":
+          "csv"}, {"name": "arpat10", "type": "csv"}, {"name": "box2m", "type": "json"}],
+          "name": "Zip files", "outputs": [{"name": "output", "type": "zip"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  arguments:
+    parameters:
+    - {name: n_rows}
+  serviceAccountName: pipeline-runner

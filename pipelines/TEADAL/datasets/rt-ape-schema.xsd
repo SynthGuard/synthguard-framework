@@ -1,0 +1,1145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:element name="ape2015">
+		<xs:annotation>
+			<xs:documentation>Attestato di Prestazione Energetica degli Edifici 2015</xs:documentation>
+		</xs:annotation>
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="info" type="typeInfo"/>
+				<xs:element name="datiAttestato" type="typeDatiAttestato">
+					<xs:annotation>
+						<xs:documentation>DATI obbligatori per l'invio al SIAPE attribuiti dalla Regione di competenza</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="datiGenerali" type="typeDatiGenerali"/>
+				<xs:element name="prestazioneGlobale" type="typePrestazioneGlobale"/>
+				<xs:element name="prestazioneImpianti" type="typePrestazioneImpianti"/>
+				<xs:element name="raccomandazioni" type="typeRaccomandazioni">
+					<xs:annotation>
+						<xs:documentation>RIQUALIFICAZIONE ENERGETICA E RISTRUTTURAZIONE IMPORTANTE</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="datiEnergetici" type="typeDatiEnergetici"/>
+				<xs:element name="datiFabbricato" type="typeDatiFabbricato"/>
+				<xs:element name="datiImpianti" type="typeDatiImpianti"/>
+				<xs:element name="informazioniMiglioramento">
+					<xs:simpleType>
+						<xs:restriction base="xs:string">
+							<xs:maxLength value="255"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:element>
+				<xs:element name="soggettoCertificatore" type="typeSoggettoCertificatore"/>
+				<xs:element name="sopralluogoObbligatorio" type="xs:boolean" default="1">
+					<xs:annotation>
+						<xs:documentation>Valorizzato a TRUE se è stato eseguito almeno un sopralluogo/rilievo sull'edificio</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="softwareUtilizzato" type="typeSoftwareUtilizzato"/>
+				<xs:element name="dataEmissione" type="xs:date"/>
+				<xs:element name="datiExtra" type="typeDatiExtra">
+					<xs:annotation>
+						<xs:documentation>Dati NON stampati nel certificato, ma ritenuti necessari.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+	<xs:simpleType name="typeCodiceISTATRegione">
+		<xs:annotation>
+			<xs:documentation>Codice ISTAT della Regione o Provincia Autonoma di competenza</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:length value="2"/>
+			<xs:pattern value="[0-9][0-9]"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="typeInfo">
+		<xs:sequence>
+			<xs:element name="copyright" type="xs:string" fixed="FORMATO XML APE2015 STANDARD NAZIONALE"/>
+			<xs:element name="versione" type="xs:string" fixed="12.00"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="typeDatiAttestato">
+		<xs:annotation>
+			<xs:documentation>DATI obbligatori per l'invio al SIAPE</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="codiceISTATRegione" type="typeCodiceISTATRegione">
+				<xs:annotation>
+					<xs:documentation>Codice ISTAT della Regione (01...20) o della Provincia autonoma (Bolzano=21 e Trento=22)</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="codiceIdentificativo">
+				<xs:annotation>
+					<xs:documentation>ID dell'APE attribuito dalla Regione di competenza</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="36"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="dataScadenza" type="xs:date">
+				<xs:annotation>
+					<xs:documentation>Data di scadenza dell'APE attribuita dalla Regione di competenza</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="typeDatiCatastali">
+		<xs:sequence>
+			<xs:element name="codiceCatastale">
+				<xs:annotation>
+					<xs:documentation>Codice CATASTALE del Comune</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:length value="4"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="comuneCatastale">
+				<xs:annotation>
+					<xs:documentation>Denominazione del Comune CATASTALE</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="tipoCatasto" default="1">
+				<xs:annotation>
+					<xs:documentation>0=Catasto Terreni
+1=Catasto Fabbricati
+2=Catasto Tavolare</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedByte">
+						<xs:minInclusive value="0"/>
+						<xs:maxInclusive value="2"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="sezione" minOccurs="0">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="foglio">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="particella">
+				<xs:annotation>
+					<xs:documentation>In caso di Catasto Tavolare inserire il Numero Immobile</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="subalterni" minOccurs="0">
+				<xs:complexType>
+					<xs:sequence maxOccurs="4">
+						<xs:element name="subDA" type="typeSubalterno"/>
+						<xs:element name="subA" type="typeSubalterno"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="altriSubalterni" type="typeSubalterno" minOccurs="0" maxOccurs="20"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="typeIndicePrestazione">
+		<xs:restriction base="xs:decimal">
+			<xs:fractionDigits value="2"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="typeClasseEnergetica">
+		<xs:sequence>
+			<xs:element name="classeEnergetica">
+				<xs:annotation>
+					<xs:documentation>A4, A3, A2, A1, B, C, D, E, F, G</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="1"/>
+						<xs:maxLength value="2"/>
+						<xs:enumeration value="A4"/>
+						<xs:enumeration value="A3"/>
+						<xs:enumeration value="A2"/>
+						<xs:enumeration value="A1"/>
+						<xs:enumeration value="B"/>
+						<xs:enumeration value="C"/>
+						<xs:enumeration value="D"/>
+						<xs:enumeration value="E"/>
+						<xs:enumeration value="F"/>
+						<xs:enumeration value="G"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="epglnren" type="typeIndicePrestazione"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="typeConsumoAnnuo">
+		<xs:restriction base="xs:decimal">
+			<xs:minInclusive value="0"/>
+			<xs:fractionDigits value="0"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="typeConsumoAnnuoUM">
+		<xs:annotation>
+			<xs:documentation>0=Nm³ (opzione non utilizzabile dopo il 31/12/2016), 1=l (opzione non utilizzabile dopo il 31/12/2016), 2=kg, 3=kWh, 4=Sm³</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:unsignedByte">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="4"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="typeConsumoImpianto">
+		<xs:sequence>
+			<xs:element name="consumoAnnuo" type="typeConsumoAnnuo">
+				<xs:annotation>
+					<xs:documentation>Quantità annua consumata in uso standard</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="consumoAnnuoUM" type="typeConsumoAnnuoUM"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="typeConsumoImpiantoAltro">
+		<xs:sequence>
+			<xs:element name="consumoAnnuo" type="typeConsumoAnnuo">
+				<xs:annotation>
+					<xs:documentation>Quantità annua consumata in uso standard</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="consumoAnnuoUM" type="typeConsumoAnnuoUM"/>
+			<xs:element name="descrizioneFonteEnergetica">
+				<xs:annotation>
+					<xs:documentation>Descrizione della Fonte Energetica</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="0"/>
+						<xs:maxLength value="100"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="typeInterventoRaccomandato">
+		<xs:sequence>
+			<xs:element name="codice">
+				<xs:annotation>
+					<xs:documentation>0=REN1
+1=REN2
+2=REN3
+3=REN4
+4=REN5
+5=REN6
+</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedByte">
+						<xs:minInclusive value="0"/>
+						<xs:maxInclusive value="5"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="tipoInterventoRaccomandato">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="ristrutturazioneImportante" type="xs:boolean" default="0"/>
+			<xs:element name="tempoRitornoInvestimento" default="1">
+				<xs:annotation>
+					<xs:documentation>espresso in anni</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:decimal">
+						<xs:fractionDigits value="2"/>
+						<xs:minInclusive value="0"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="classificazioneRaggiungibile" type="typeClasseEnergetica"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="typePrestazioneFabbricato">
+		<xs:annotation>
+			<xs:documentation>0=SORRIDENTE (alta);  1=MEDIA (media);  2=TRISTE (bassa)</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:unsignedByte">
+			<xs:minInclusive value="0"/>
+			<xs:maxInclusive value="2"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="typePrestazioneGlobale">
+		<xs:sequence>
+			<xs:element name="prestazioneEnergeticaFabbricato">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="inverno" type="typePrestazioneFabbricato">
+							<xs:annotation>
+								<xs:documentation>0=SORRIDENTE  (alta)
+1=MEDIA  (media)
+2=TRISTE  (bassa)</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="estate" type="typePrestazioneFabbricato">
+							<xs:annotation>
+								<xs:documentation>0=SORRIDENTE  (alta)
+1=MEDIA  (media)
+2=TRISTE  (bassa)</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="prestazioneEnergeticaGlobale">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="edificioEnergiaQuasiZero" type="xs:boolean"/>
+						<xs:element name="classificazione" type="typeClasseEnergetica"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="riferimenti">
+				<xs:annotation>
+					<xs:documentation>Classificazione di immobili simili</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="classificazioneNuovi" type="typeClasseEnergetica">
+							<xs:annotation>
+								<xs:documentation>Si tratta dello stesso fabbricato calcolato con i requisiti minimi</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="classificazioneEsistenti" type="typeClasseEnergetica" minOccurs="0"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="typeCodiceISTAT">
+		<xs:annotation>
+			<xs:documentation>Codice ISTAT del comune</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:length value="6"/>
+			<xs:pattern value="[0-9][0-9][0-9][0-9][0-9][0-9]"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="typeAnno">
+		<xs:restriction base="xs:unsignedInt">
+			<xs:minInclusive value="1000"/>
+			<xs:maxInclusive value="2100"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="typeSuperficieVolume">
+		<xs:restriction base="xs:decimal">
+			<xs:fractionDigits value="2"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="typeSubalterno">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="0"/>
+			<xs:maxLength value="5"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="typeDatiGenerali">
+		<xs:sequence>
+			<xs:element name="destinazioneUso">
+				<xs:annotation>
+					<xs:documentation>0=Residenziale
+1=Non residenziale</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedByte">
+						<xs:minInclusive value="0"/>
+						<xs:maxInclusive value="1"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="classificazioneDPR412">
+				<xs:annotation>
+					<xs:documentation>0=E1(1) abitazioni adibite a residenza con carattere continuativo                   
+1=E1(1)bis collegi, luoghi di ricovero, case di pena, caserme, conventi
+2=E1(2) abitazioni adibite a residenza con occupazione saltuaria
+3=E1(3) edifici adibiti ad albergo, pensione ed attività similari
+4=E2 uffici e assimilabili
+5=E3 ospedali, cliniche, case di cura e assimilabili
+6=E4(1) cinema e teatri, sale di riunione per congressi e assimilabili
+7=E4(2) mostre, musei e biblioteche, luoghi di culto e assimilabili
+8=E4(3) bar, ristoranti, sale da ballo e assimilabili
+9=E5 attività commerciali e assimilabili
+10=E6(1) piscine, saune e assimilabili
+11=E6(2) palestre e assimilabili
+12=E6(3) servizi di supporto alle attività sportive
+13=E7 attività scolastiche
+14=E8 attività industriali, artigianali e assimilabili</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedByte">
+						<xs:minInclusive value="0"/>
+						<xs:maxInclusive value="14"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="oggettoAttestato">
+				<xs:annotation>
+					<xs:documentation>0=Intero edificio
+1=Unità immobiliare
+2=Gruppo di unità immobiliari</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedByte">
+						<xs:minInclusive value="0"/>
+						<xs:maxInclusive value="2"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="numeroUnitaImmobiliari">
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedInt">
+						<xs:minInclusive value="1"/>
+						<xs:maxInclusive value="999"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="motivazione">
+				<xs:annotation>
+					<xs:documentation>0=Nuova Costruzione
+1=Passaggio di proprietà
+2=Locazione
+3=Ristrutturazione importante
+4=Riqualificazione Energetica
+5=Altro</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedByte">
+						<xs:minInclusive value="0"/>
+						<xs:maxInclusive value="5"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="altraMotivazione" type="xs:boolean">
+				<xs:annotation>
+					<xs:documentation>Oltre alla "motivazione" indicata, è tuttavia possibile inserire un'ulteriore motivazione alla voce "Altro"</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="descrizioneAltraMotivazione" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Descrizione dell'eventuale "Altra" motivazione (valorizzata solo se è presente "altraMotivazione")</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="0"/>
+						<xs:maxLength value="200"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="datiIdentificativi">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="fotoEdificio" minOccurs="0">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="immagine">
+										<xs:annotation>
+											<xs:documentation>DIMENSIONE max 512x512 oppure 600x400</xs:documentation>
+										</xs:annotation>
+										<xs:simpleType>
+											<xs:restriction base="xs:base64Binary">
+												<xs:maxLength value="256000"/>
+											</xs:restriction>
+										</xs:simpleType>
+									</xs:element>
+									<xs:element name="formatoImmagine" type="xs:string" fixed="JPG">
+										<xs:annotation>
+											<xs:documentation>solo immagine JPG</xs:documentation>
+										</xs:annotation>
+									</xs:element>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+						<xs:element name="codiceISTAT" type="typeCodiceISTAT">
+							<xs:annotation>
+								<xs:documentation>codice ISTAT del comune</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="indirizzo">
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:maxLength value="255"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="piano">
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:maxLength value="255"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="interno">
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:maxLength value="255"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="LatitudineGIS" type="xs:decimal">
+							<xs:annotation>
+								<xs:documentation>Coodinata GIS  (WGS84):
+Latitudine (NORD) in decimali</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="LongitudineGIS" type="xs:decimal">
+							<xs:annotation>
+								<xs:documentation>Coodinata GIS  (WGS84):
+Longitudine (EST) in decimali</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="zonaClimatica">
+							<xs:annotation>
+								<xs:documentation>A, B, C, D, E, F</xs:documentation>
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:minLength value="1"/>
+									<xs:maxLength value="1"/>
+									<xs:pattern value="[A-F]"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+						<xs:element name="annoCostruzione" type="typeAnno"/>
+						<xs:element name="superficieUtileRiscaldata" type="typeSuperficieVolume"/>
+						<xs:element name="superficieUtileRaffrescata" type="typeSuperficieVolume"/>
+						<xs:element name="volumeLordoRiscaldato" type="typeSuperficieVolume"/>
+						<xs:element name="volumeLordoRaffrescato" type="typeSuperficieVolume"/>
+						<xs:element name="catasto">
+							<xs:complexType>
+								<xs:sequence>
+									<xs:element name="datiCatastali" type="typeDatiCatastali" maxOccurs="unbounded">
+										<xs:annotation>
+											<xs:documentation>E' possibile inserire più di un blocco di dati catastali per poter gestire qualsiasi situazione, anche il caso di edifici su più Comuni, etc.
+N.B. Deve essere gestita la STAMPA sull' APE.</xs:documentation>
+										</xs:annotation>
+									</xs:element>
+								</xs:sequence>
+							</xs:complexType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="serviziEnergeticiPresenti">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="climatizzazioneInvernale" type="xs:boolean" default="1">
+							<xs:annotation>
+								<xs:documentation>Nel caso di edificio residenziale il servizio  di climatizzazione invernale deve essere sempre attivo</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="climatizzazioneEstiva" type="xs:boolean"/>
+						<xs:element name="ventilazioneMeccanica" type="xs:boolean"/>
+						<xs:element name="produzioneAcquaCaldaSanitaria" type="xs:boolean">
+							<xs:annotation>
+								<xs:documentation>Nel caso di edificio residenziale il servizio di acqua calda sanitaria deve essere sempre attivo</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+						<xs:element name="illuminazione" type="xs:boolean"/>
+						<xs:element name="trasportoPersoneCose" type="xs:boolean"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="typePrestazioneImpianti">
+		<xs:sequence>
+			<xs:element name="energiaElettricaRete" type="typeConsumoImpianto" minOccurs="0"/>
+			<xs:element name="gasNaturale" type="typeConsumoImpianto" minOccurs="0"/>
+			<xs:element name="gpl" type="typeConsumoImpianto" minOccurs="0"/>
+			<xs:element name="carbone" type="typeConsumoImpianto" minOccurs="0"/>
+			<xs:element name="gasolio" type="typeConsumoImpianto" minOccurs="0"/>
+			<xs:element name="olioCombustibile" type="typeConsumoImpianto" minOccurs="0"/>
+			<xs:element name="biomasseSolide" type="typeConsumoImpianto" minOccurs="0"/>
+			<xs:element name="biomasseLiquide" type="typeConsumoImpianto" minOccurs="0"/>
+			<xs:element name="biomasseGassose" type="typeConsumoImpianto" minOccurs="0"/>
+			<xs:element name="solareFotovoltaico" type="typeConsumoImpianto" minOccurs="0"/>
+			<xs:element name="solareTermico" type="typeConsumoImpianto" minOccurs="0"/>
+			<xs:element name="eolico" type="typeConsumoImpianto" minOccurs="0"/>
+			<xs:element name="teleriscaldamento" type="typeConsumoImpianto" minOccurs="0"/>
+			<xs:element name="teleraffrescamento" type="typeConsumoImpianto" minOccurs="0"/>
+			<xs:element name="altro" type="typeConsumoImpiantoAltro" minOccurs="0"/>
+			<xs:element name="epglnren" type="typeIndicePrestazione">
+				<xs:annotation>
+					<xs:documentation>Indica della prestazione energetica non rinnovabile</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="epglren" type="typeIndicePrestazione">
+				<xs:annotation>
+					<xs:documentation>Indica della prestazione energetica rinnovabile</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="emissioniCO2" type="typeIndicePrestazione"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="typeRaccomandazioni">
+		<xs:annotation>
+			<xs:documentation>RIQUALIFICAZIONE ENERGETICA E RISTRUTTURAZIONE IMPORTANTE</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="interventoRaccomandato" type="typeInterventoRaccomandato" maxOccurs="6"/>
+			<xs:element name="classificazione" type="typeClasseEnergetica"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="typeDatiEnergetici">
+		<xs:sequence>
+			<xs:element name="energiaEsportata" type="typeConsumoAnnuo" default="0"/>
+			<xs:element name="vettoreEnergetico" default="0">
+				<xs:annotation>
+					<xs:documentation>0=Energia elettrica
+1=Energia termica
+2=Altro	</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedByte">
+						<xs:minInclusive value="0"/>
+						<xs:maxInclusive value="2"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="typeDatiImpianti">
+		<xs:sequence>
+			<xs:element name="climatizzazioneInvernale">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:choice>
+							<xs:element name="impianto" type="typeImpianto" maxOccurs="unbounded">
+								<xs:annotation>
+									<xs:documentation>alternativo ad "impiantoSimulato" (solo uno dei due)</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="impiantoSimulato" type="xs:string" fixed="SIMULATO IN QUANTO ASSENTE">
+								<xs:annotation>
+									<xs:documentation>alternativo ad "impianto" (solo uno dei due)</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:choice>
+						<xs:element name="efficienza" type="typeEfficienza"/>
+						<xs:element name="prestazione" type="typePrestazione"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="climatizzazioneEstiva" minOccurs="0">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="impianto" type="typeImpianto" maxOccurs="unbounded"/>
+						<xs:element name="efficienza" type="typeEfficienza"/>
+						<xs:element name="prestazione" type="typePrestazione"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="produzioneACS" minOccurs="0">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:choice>
+							<xs:element name="impianto" type="typeImpianto" maxOccurs="unbounded"/>
+							<xs:element name="impiantoSimulato" type="xs:string" fixed="SIMULATO IN QUANTO ASSENTE">
+								<xs:annotation>
+									<xs:documentation>alternativo ad "impianto" (solo uno dei due)</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:choice>
+						<xs:element name="efficienza" type="typeEfficienza"/>
+						<xs:element name="prestazione" type="typePrestazione"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="impiantiCombinati" minOccurs="0">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="impianto" type="typeImpianto" maxOccurs="unbounded"/>
+						<xs:element name="efficienza" type="typeEfficienza" minOccurs="0"/>
+						<xs:element name="prestazione" type="typePrestazione" minOccurs="0"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="produzioneFontiRinnovabili" minOccurs="0">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="impianto" type="typeImpianto" maxOccurs="unbounded"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="ventilazioneMeccanica" minOccurs="0">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="impianto" type="typeImpianto" maxOccurs="unbounded"/>
+						<xs:element name="efficienza" type="typeEfficienza" minOccurs="0"/>
+						<xs:element name="prestazione" type="typePrestazione"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="illuminazione" minOccurs="0">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="impianto" type="typeImpianto" maxOccurs="unbounded"/>
+						<xs:element name="efficienza" type="typeEfficienza" minOccurs="0"/>
+						<xs:element name="prestazione" type="typePrestazione"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="trasportoPersoneCose" minOccurs="0">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="impianto" type="typeImpianto" maxOccurs="unbounded"/>
+						<xs:element name="efficienza" type="typeEfficienza" minOccurs="0"/>
+						<xs:element name="prestazione" type="typePrestazione"/>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="typeRapporto">
+		<xs:restriction base="xs:decimal">
+			<xs:fractionDigits value="4"/>
+			<xs:minInclusive value="0"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="typeTrasmittanza">
+		<xs:restriction base="xs:decimal">
+			<xs:fractionDigits value="4"/>
+			<xs:minInclusive value="0"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="typeDatiFabbricato">
+		<xs:sequence>
+			<xs:element name="volumeRiscaldato" type="typeSuperficieVolume"/>
+			<xs:element name="superficieDisperdente" type="typeSuperficieVolume"/>
+			<xs:element name="rapportoSV" type="typeRapporto"/>
+			<xs:element name="ephnd" type="typeIndicePrestazione"/>
+			<xs:element name="rapportoAsolAsupUtile" type="typeRapporto"/>
+			<xs:element name="yie" type="typeTrasmittanza">
+				<xs:annotation>
+					<xs:documentation>Media pesata in base alle superfici esterne escluse quelle esposte fra N-NW e N-NE</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="typeImpianto">
+		<xs:sequence>
+			<xs:element name="tipoImpianto">
+				<xs:annotation>
+					<xs:documentation>0=Caldaia standard
+1=Caldaia a condensazione
+2=Stufa o caminetto
+3=Riscaldamento elettrico
+4=HP elettrica aria-aria
+5=HP elettrica aria-acqua
+6=HP elettrica acqua-aria
+7=HP elettrica acqua-acqua
+8=HP ad assorbimento aria-aria
+9=HP ad assorbimento aria-acqua
+10=HP ad assorbimento acqua-aria
+11=HP ad assorbimento acqua-acqua
+12=HP a motore endotermico aria-aria
+13=HP a motore endotermico aria-acqua
+14=HP a motore endotermico acqua-aria
+15=HP a motore endotermico acqua-acqua
+16=Impianto solare termico
+17=Impianto fotovoltaico
+18=Cogeneratore
+19=Teleriscaldamento
+20=Eolico
+21=Ventilatori
+22=Lampade ad incandescenza
+23=Lampade fluorescenti
+24=Lampade a led
+25=Lampade a scarica
+26=Ascensore a motore elettrico a fune con contrappeso
+27=Ascensore a motore elettrico a fune con argano agganciato
+28=Ascensore idraulico
+29=Scala mobile
+30=Marciapiede mobile
+31=Altro
+32=Scalda-acqua autonomo istantaneo a gas
+33=Scalda-acqua autonomo ad accumulo a gas
+34=Scalda-acqua autonomo a pompa di calore
+35=Scaldacqua a pompa di calore
+36=Boiler elettrico
+</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedByte">
+						<xs:minInclusive value="0"/>
+						<xs:maxInclusive value="36"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="descrizioneImpianto" type="xs:string" minOccurs="0"/>
+			<xs:element name="annoInstallazione" type="typeAnno"/>
+			<xs:element name="codiceCatastoRegionaleImpiantiTermici">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="vettoriEnergeticiUtilizzati">
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="vettore" default="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>0=Energia elettrica	
+1=Gas naturale	
+2=GPL	
+3=Carbone	
+4=Gasolio e Olio combustibile - Opzione non utilizzabile dopo il 31/12/2016
+5=Biomasse solide	
+6=Biomasse liquide	
+7=Biomasse gassose	
+8=Solare fotovoltaico	
+9=Solare termico	
+10=Eolico	
+11=Teleriscaldamento
+12=Teleraffrescamento
+13=altro
+14=Gasolio
+15=Olio combustibile
+</xs:documentation>
+							</xs:annotation>
+							<xs:simpleType>
+								<xs:restriction base="xs:unsignedByte">
+									<xs:minInclusive value="0"/>
+									<xs:maxInclusive value="15"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="potenzaNominale">
+				<xs:annotation>
+					<xs:documentation>Potenza Nominale Utile</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:decimal">
+						<xs:minInclusive value="0"/>
+						<xs:fractionDigits value="2"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:simpleType name="typeEfficienza">
+		<xs:restriction base="xs:decimal">
+			<xs:minInclusive value="0"/>
+			<xs:fractionDigits value="2"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:complexType name="typePrestazione">
+		<xs:sequence>
+			<xs:element name="epren" type="typeIndicePrestazione"/>
+			<xs:element name="epnren" type="typeIndicePrestazione"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="typeSoggettoCertificatore">
+		<xs:sequence>
+			<xs:element name="tipoSoggettoCertificatore">
+				<xs:annotation>
+					<xs:documentation>0=Ente/organismo pubblico
+1=Tecnico abilitato
+2=Organismo/società</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedByte">
+						<xs:minInclusive value="0"/>
+						<xs:maxInclusive value="2"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="nome">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="cognome">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="denominazione" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Da compilare se "tipoSoggettoCertificatore" è diverso da 1 (Tecnico abilitato)</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="indirizzo">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="email">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="telefono">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="titolo">
+				<xs:annotation>
+					<xs:documentation>Titolo abilitante (iscrizione ordini/collegi; corso autorizzato da MiSE; corso autorizzato dalla Regione, ecc.)</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="ordineIscrizione" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Il campo deve contenere:
+Ordine, provincia e numero di iscrizione separati dal carattere [;]  (punto e virgola)</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="dichiarazioneIndipendenza" default="0">
+				<xs:annotation>
+					<xs:documentation>0=Il sottoscritto certificatore, consapevole delle responsabilità assunte ai sensi degli artt.359 e 481 del Codice Penale, DICHIARA di aver svolto con indipendenza ed imparzialità di giudizio l’attività di Soggetto Certificatore del sistema edificio impianto oggetto del presente attestato e l'assenza di conflitto di interessi ai sensi dell'art.3 del D.P.R. 16 aprile 2013, n. 75.
+1=Dichiarazione di indipendenza specifica della Regione</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedByte">
+						<xs:minInclusive value="0"/>
+						<xs:maxInclusive value="1"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="informazioniAggiuntive" minOccurs="0">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:minLength value="0"/>
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="typeSoftwareUtilizzato">
+		<xs:sequence>
+			<xs:element name="requisitiRispondenzaRisultati" type="xs:boolean" default="1">
+				<xs:annotation>
+					<xs:documentation>Il software utilizzato risponde ai requisiti di rispondenza e garanzia di scostamento massimo dei risultati conseguiti rispetto ai valori ottenuti per mezzo dello strumento di riferimento nazionale ?</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="calcoloSemplificato" type="xs:boolean" default="0">
+				<xs:annotation>
+					<xs:documentation>Ai fini della redazione del presente attestato è stato utilizzato un software che impieghi un metodo di calcolo semplificato ?</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="typeDatiExtra">
+		<xs:annotation>
+			<xs:documentation>DATI aggiuntivi</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="comune">
+				<xs:annotation>
+					<xs:documentation>Denominazione del COMUNE</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="CAP">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:length value="5"/>
+						<xs:pattern value="[0-9][0-9][0-9][0-9][0-9]"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="provincia">
+				<xs:annotation>
+					<xs:documentation>Denominazione della PROVINCIA</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="regione">
+				<xs:annotation>
+					<xs:documentation>Denominazione della REGIONE</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="gradiGiorno" default="1">
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedInt">
+						<xs:minExclusive value="0"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="dataSopralluogo" type="xs:date">
+				<xs:annotation>
+					<xs:documentation>DATA del sopralluogo</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="softwareUtilizzato">
+				<xs:annotation>
+					<xs:documentation>DENOMINAZIONE del software utilizzato</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="numeroCertificatoSoftware">
+				<xs:annotation>
+					<xs:documentation>Numero del CERTIFICATO (CTI) del software utilizzato</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedInt">
+						<xs:minInclusive value="1"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="ephndLim" type="xs:decimal">
+				<xs:annotation>
+					<xs:documentation>Limite dell'indice di prestazione termica utile per riscaldamento (calcolata con l'edificio di riferimento)</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="EPglnrenRifStandard" type="xs:decimal">
+				<xs:annotation>
+					<xs:documentation>Indice di prestazione energetica GLOBALE  dell'edificio di riferimento per la costruzione della scala delle classi energetiche.
+DM 26/06/2015
+LINEE GUIDA - Punto 5.1</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="idCatastale" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Ulteriore, eventuale, identificativo catastale per subalterni di edifici pubblici, etc.</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="255"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="proprietaEdificio">
+				<xs:annotation>
+					<xs:documentation>0=Privato
+1=Pubblico
+2=Uso Pubblico</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedByte">
+						<xs:minInclusive value="0"/>
+						<xs:maxInclusive value="2"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="codiceEdificioScolastico" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Se l'elemento classificazioneDPR412 è pari a 13 (E7=Attività scolastica) occorre indicare il Codice Edificio costituito da 10 caratteri numerici.</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="10"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="tipologiaEdilizia">
+				<xs:annotation>
+					<xs:documentation>0=Edificio isolato (monofamiliare)
+1=Edificio isolato (bifamiliare)
+2=Edificio isolato (plurifamiliare)
+3=Edificio in Linea
+4=Edificio a Schiera
+5=Edificio a Corte
+6=Edificio a Torre
+7=Edificio a Blocco
+8=Edificio a Piastra
+9=Altro</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedByte">
+						<xs:minInclusive value="0"/>
+						<xs:maxInclusive value="9"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="tipologiaCostruttiva">
+				<xs:annotation>
+					<xs:documentation>0=Struttura in muratura portante
+1=Struttura in c.a. (con chiusure in laterizi)
+2=Struttura in c.a. (con chiusure continue in vetro)
+3=Struttura in c.a. (con chiusure in pannelli prefabbricati)
+4=Struttura in acciaio (con chiusure in muratura)
+5=Struttura in acciaio (con facciate continue in vetro)
+6=Struttura in acciaio (con chiusure in pannelli prefabbricati)
+7=Struttura in legno
+8=Struttura prefabbricata in c.a.
+9=Struttura mista (c.a. e laterizi)
+10=Struttura mista (c.a. e acciaio)
+11=Struttura mista (acciaio e muratura)
+12=Struttura mista (muratura e legno)
+13=Struttura mista (altro)
+14=Altro</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:unsignedByte">
+						<xs:minInclusive value="0"/>
+						<xs:maxInclusive value="14"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+</xs:schema>

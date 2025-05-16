@@ -1,0 +1,834 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: ee-user-pipeline-
+  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.0, pipelines.kubeflow.org/pipeline_compilation_time: '2024-08-12T15:52:26.554177',
+    pipelines.kubeflow.org/pipeline_spec: '{"description": "description", "inputs":
+      [{"name": "n_rows", "type": "Integer"}, {"default": "16", "name": "min_age",
+      "optional": true, "type": "Integer"}, {"default": "85", "name": "max_age", "optional":
+      true, "type": "Integer"}, {"default": "0.5", "name": "mf_ratio", "optional":
+      true, "type": "Float"}], "name": "EE user pipeline"}'}
+  labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.0}
+spec:
+  entrypoint: ee-user-pipeline
+  templates:
+  - name: ee-user-pipeline
+    inputs:
+      parameters:
+      - {name: max_age}
+      - {name: mf_ratio}
+      - {name: min_age}
+      - {name: n_rows}
+    dag:
+      tasks:
+      - name: email
+        template: email
+        dependencies: [generate-names]
+        arguments:
+          artifacts:
+          - {name: generate-names-output_csv, from: '{{tasks.generate-names.outputs.artifacts.generate-names-output_csv}}'}
+      - name: generate-addresses
+        template: generate-addresses
+        arguments:
+          parameters:
+          - {name: n_rows, value: '{{inputs.parameters.n_rows}}'}
+      - name: generate-birthday
+        template: generate-birthday
+        arguments:
+          parameters:
+          - {name: max_age, value: '{{inputs.parameters.max_age}}'}
+          - {name: min_age, value: '{{inputs.parameters.min_age}}'}
+          - {name: n_rows, value: '{{inputs.parameters.n_rows}}'}
+      - name: generate-id-codes-with-user-data
+        template: generate-id-codes-with-user-data
+        dependencies: [generate-birthday, generate-names]
+        arguments:
+          artifacts:
+          - {name: generate-birthday-output, from: '{{tasks.generate-birthday.outputs.artifacts.generate-birthday-output}}'}
+          - {name: generate-names-output_csv, from: '{{tasks.generate-names.outputs.artifacts.generate-names-output_csv}}'}
+      - name: generate-names
+        template: generate-names
+        dependencies: [load-data]
+        arguments:
+          parameters:
+          - {name: load-data-Output, value: '{{tasks.load-data.outputs.parameters.load-data-Output}}'}
+          - {name: mf_ratio, value: '{{inputs.parameters.mf_ratio}}'}
+          - {name: n_rows, value: '{{inputs.parameters.n_rows}}'}
+      - {name: load-data, template: load-data}
+      - name: output
+        template: output
+        dependencies: [email, generate-addresses, generate-id-codes-with-user-data]
+        arguments:
+          artifacts:
+          - {name: email-output_csv, from: '{{tasks.email.outputs.artifacts.email-output_csv}}'}
+          - {name: generate-addresses-output_csv, from: '{{tasks.generate-addresses.outputs.artifacts.generate-addresses-output_csv}}'}
+          - {name: generate-id-codes-with-user-data-output_csv, from: '{{tasks.generate-id-codes-with-user-data.outputs.artifacts.generate-id-codes-with-user-data-output_csv}}'}
+  - name: email
+    container:
+      args: [--input-csv, /tmp/inputs/input_csv/data, --output-csv, /tmp/outputs/output_csv/data]
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'unidecode' 'pandas' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install
+        --quiet --no-warn-script-location 'unidecode' 'pandas' --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def email(input_csv, output_csv):
+            import random
+            import pandas as pd
+            import unidecode
+
+            df = pd.read_csv(input_csv)
+
+            def generate_email(first_name_clean, last_name_clean):
+                patterns = [
+                    f"{first_name_clean}.{last_name_clean}",
+                    f"{first_name_clean}{last_name_clean}",
+                    f"{first_name_clean[0]}.{last_name_clean}",
+                    f"{first_name_clean}.{last_name_clean[0]}",
+                    f"{first_name_clean}{random.randint(10, 99)}"
+                ]
+
+                domains = ["hotmail.com", "gmail.com", "yahoo.com", "outlook.com"]
+                email_pattern = random.choice(patterns)
+                domain = random.choice(domains)
+
+                email_address = f"{email_pattern}@{domain}"
+                return email_address
+
+            df['email'] = df.apply(
+                lambda row: generate_email(
+                    unidecode.unidecode(row['first_name'].lower()),
+                    unidecode.unidecode(row['last_name'].lower())
+                ), axis=1
+            )
+
+            df[['email']].to_csv(output_csv, index=False)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Email', description='')
+        _parser.add_argument("--input-csv", dest="input_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-csv", dest="output_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = email(**_parsed_args)
+      image: python:3.7
+    inputs:
+      artifacts:
+      - {name: generate-names-output_csv, path: /tmp/inputs/input_csv/data}
+    outputs:
+      artifacts:
+      - {name: email-output_csv, path: /tmp/outputs/output_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.0
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-csv", {"inputPath": "input_csv"}, "--output-csv", {"outputPath":
+          "output_csv"}], "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''unidecode'' ''pandas''
+          || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+          ''unidecode'' ''pandas'' --user) && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef email(input_csv, output_csv):\n    import
+          random\n    import pandas as pd\n    import unidecode\n\n    df = pd.read_csv(input_csv)\n\n    def
+          generate_email(first_name_clean, last_name_clean):\n        patterns = [\n            f\"{first_name_clean}.{last_name_clean}\",\n            f\"{first_name_clean}{last_name_clean}\",\n            f\"{first_name_clean[0]}.{last_name_clean}\",\n            f\"{first_name_clean}.{last_name_clean[0]}\",\n            f\"{first_name_clean}{random.randint(10,
+          99)}\"\n        ]\n\n        domains = [\"hotmail.com\", \"gmail.com\",
+          \"yahoo.com\", \"outlook.com\"]\n        email_pattern = random.choice(patterns)\n        domain
+          = random.choice(domains)\n\n        email_address = f\"{email_pattern}@{domain}\"\n        return
+          email_address\n\n    df[''email''] = df.apply(\n        lambda row: generate_email(\n            unidecode.unidecode(row[''first_name''].lower()),\n            unidecode.unidecode(row[''last_name''].lower())\n        ),
+          axis=1\n    )\n\n    df[[''email'']].to_csv(output_csv, index=False)\n\nimport
+          argparse\n_parser = argparse.ArgumentParser(prog=''Email'', description='''')\n_parser.add_argument(\"--input-csv\",
+          dest=\"input_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-csv\",
+          dest=\"output_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = email(**_parsed_args)\n"], "image": "python:3.7"}}, "inputs": [{"name":
+          "input_csv", "type": "csv"}], "name": "Email", "outputs": [{"name": "output_csv",
+          "type": "csv"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: generate-addresses
+    container:
+      args: [--n-rows, '{{inputs.parameters.n_rows}}', --output-csv, /tmp/outputs/output_csv/data]
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'pandas' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet
+        --no-warn-script-location 'pandas' --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n \
+        \   os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return file_path\n\
+        \ndef generate_addresses(n_rows, output_csv):\n    import pandas as pd\n \
+        \   import random\n\n    def generate_address():\n        street_names = [\"\
+        Tartu maantee\", \"Narva maantee\", \"P\xE4rnu maantee\", \"Viru t\xE4nav\"\
+        , \"Pargi t\xE4nav\", 'Pikk t\xE4nav', 'Lai t\xE4nav', 'R\xFC\xFCtli t\xE4\
+        nav']\n        cities = [\"Tallinn\", \"Tartu\", \"Narva\", \"P\xE4rnu\",\
+        \ \"Viljandi\"]\n        postal_codes = {\"Tallinn\": \"10115\", \"Tartu\"\
+        : \"50102\", \"Narva\": \"20101\", \"P\xE4rnu\": \"80011\", \"Viljandi\":\
+        \ \"71020\"}\n        street_name = random.choice(street_names)\n        street_number\
+        \ = random.randint(1, 100)\n        city = random.choice(cities)\n       \
+        \ postal_code = postal_codes[city]\n\n        address = f\"{street_name} {street_number},\
+        \ {city}, {postal_code}, Estonia\"\n        return address\n\n    df = pd.DataFrame([generate_address()\
+        \ for _ in range(n_rows)], columns=['address'])\n    print(df.head())\n  \
+        \  df.to_csv(output_csv, index=False)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog='Generate\
+        \ addresses', description='')\n_parser.add_argument(\"--n-rows\", dest=\"\
+        n_rows\", type=int, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"\
+        --output-csv\", dest=\"output_csv\", type=_make_parent_dirs_and_return_path,\
+        \ required=True, default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\
+        \n_outputs = generate_addresses(**_parsed_args)\n"
+      image: python:3.7
+    inputs:
+      parameters:
+      - {name: n_rows}
+    outputs:
+      artifacts:
+      - {name: generate-addresses-output_csv, path: /tmp/outputs/output_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.0
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--n-rows", {"inputValue": "n_rows"}, "--output-csv", {"outputPath":
+          "output_csv"}], "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''pandas'' || PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''pandas'' --user)
+          && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\"
+          > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef generate_addresses(n_rows, output_csv):\n    import pandas
+          as pd\n    import random\n\n    def generate_address():\n        street_names
+          = [\"Tartu maantee\", \"Narva maantee\", \"P\u00e4rnu maantee\", \"Viru
+          t\u00e4nav\", \"Pargi t\u00e4nav\", ''Pikk t\u00e4nav'', ''Lai t\u00e4nav'',
+          ''R\u00fc\u00fctli t\u00e4nav'']\n        cities = [\"Tallinn\", \"Tartu\",
+          \"Narva\", \"P\u00e4rnu\", \"Viljandi\"]\n        postal_codes = {\"Tallinn\":
+          \"10115\", \"Tartu\": \"50102\", \"Narva\": \"20101\", \"P\u00e4rnu\": \"80011\",
+          \"Viljandi\": \"71020\"}\n        street_name = random.choice(street_names)\n        street_number
+          = random.randint(1, 100)\n        city = random.choice(cities)\n        postal_code
+          = postal_codes[city]\n\n        address = f\"{street_name} {street_number},
+          {city}, {postal_code}, Estonia\"\n        return address\n\n    df = pd.DataFrame([generate_address()
+          for _ in range(n_rows)], columns=[''address''])\n    print(df.head())\n    df.to_csv(output_csv,
+          index=False)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Generate
+          addresses'', description='''')\n_parser.add_argument(\"--n-rows\", dest=\"n_rows\",
+          type=int, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-csv\",
+          dest=\"output_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = generate_addresses(**_parsed_args)\n"], "image": "python:3.7"}}, "inputs":
+          [{"name": "n_rows", "type": "Integer"}], "name": "Generate addresses", "outputs":
+          [{"name": "output_csv", "type": "csv"}]}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"n_rows": "{{inputs.parameters.n_rows}}"}'}
+  - name: generate-birthday
+    container:
+      args: [--n-rows, '{{inputs.parameters.n_rows}}', --min-age, '{{inputs.parameters.min_age}}',
+        --max-age, '{{inputs.parameters.max_age}}', --output, /tmp/outputs/output/data]
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'pandas' 'numpy' 'datetime' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m
+        pip install --quiet --no-warn-script-location 'pandas' 'numpy' 'datetime'
+        --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def generate_birthday(n_rows, min_age, max_age, output):
+            from datetime import datetime, timedelta
+            import numpy as np
+            import pandas as pd
+
+            def generate_random_birthday(min_age, max_age):
+                today = datetime.today()
+                start_date = today - timedelta(days=(max_age * 365))
+                end_date = today - timedelta(days=(min_age * 365))
+                return start_date + timedelta(days=np.random.randint(0, (end_date - start_date).days))
+
+            df = pd.DataFrame({
+                'date_of_birth': [generate_random_birthday(min_age, max_age).strftime('%Y-%m-%d') for _ in range(n_rows)]
+            })
+
+            df.to_csv(output, index=False)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Generate birthday', description='')
+        _parser.add_argument("--n-rows", dest="n_rows", type=int, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--min-age", dest="min_age", type=int, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--max-age", dest="max_age", type=int, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output", dest="output", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = generate_birthday(**_parsed_args)
+      image: python:3.7
+    inputs:
+      parameters:
+      - {name: max_age}
+      - {name: min_age}
+      - {name: n_rows}
+    outputs:
+      artifacts:
+      - {name: generate-birthday-output, path: /tmp/outputs/output/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.0
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--n-rows", {"inputValue": "n_rows"}, "--min-age", {"inputValue":
+          "min_age"}, "--max-age", {"inputValue": "max_age"}, "--output", {"outputPath":
+          "output"}], "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1 python3
+          -m pip install --quiet --no-warn-script-location ''pandas'' ''numpy'' ''datetime''
+          || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+          ''pandas'' ''numpy'' ''datetime'' --user) && \"$0\" \"$@\"", "sh", "-ec",
+          "program_path=$(mktemp)\nprintf \"%s\" \"$0\" > \"$program_path\"\npython3
+          -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef generate_birthday(n_rows, min_age, max_age, output):\n    from
+          datetime import datetime, timedelta\n    import numpy as np\n    import
+          pandas as pd\n\n    def generate_random_birthday(min_age, max_age):\n        today
+          = datetime.today()\n        start_date = today - timedelta(days=(max_age
+          * 365))\n        end_date = today - timedelta(days=(min_age * 365))\n        return
+          start_date + timedelta(days=np.random.randint(0, (end_date - start_date).days))\n\n    df
+          = pd.DataFrame({\n        ''date_of_birth'': [generate_random_birthday(min_age,
+          max_age).strftime(''%Y-%m-%d'') for _ in range(n_rows)]\n    })\n\n    df.to_csv(output,
+          index=False)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Generate
+          birthday'', description='''')\n_parser.add_argument(\"--n-rows\", dest=\"n_rows\",
+          type=int, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--min-age\",
+          dest=\"min_age\", type=int, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--max-age\",
+          dest=\"max_age\", type=int, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output\",
+          dest=\"output\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = generate_birthday(**_parsed_args)\n"], "image": "python:3.7"}}, "inputs":
+          [{"name": "n_rows", "type": "Integer"}, {"name": "min_age", "type": "Integer"},
+          {"name": "max_age", "type": "Integer"}], "name": "Generate birthday", "outputs":
+          [{"name": "output", "type": "csv"}]}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"max_age": "{{inputs.parameters.max_age}}",
+          "min_age": "{{inputs.parameters.min_age}}", "n_rows": "{{inputs.parameters.n_rows}}"}'}
+  - name: generate-id-codes-with-user-data
+    container:
+      args: [--name-input-csv, /tmp/inputs/name_input_csv/data, --birthday-input-csv,
+        /tmp/inputs/birthday_input_csv/data, --output-csv, /tmp/outputs/output_csv/data]
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'pandas' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet
+        --no-warn-script-location 'pandas' --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def generate_id_codes__with_user_data(name_input_csv, birthday_input_csv, output_csv):
+            #imports & installs
+            import pandas as pd
+            import random
+            print('Everything succesfully imported!')
+
+            def calculate_control_number(id_code):
+                def weighted_sum(weights, code):
+                    return sum(w * int(c) for w, c in zip(weights, code))
+
+                level1_weights = [1, 2, 3, 4, 5, 6, 7, 8, 9, 1]
+                level2_weights = [3, 4, 5, 6, 7, 8, 9, 1, 2, 3]
+
+                sum_1 = weighted_sum(level1_weights, id_code)
+                control_number = sum_1 % 11
+                if control_number == 10:
+                    sum_2 = weighted_sum(level2_weights, id_code)
+                    control_number = sum_2 % 11
+                    if control_number == 10:
+                        control_number = 0
+
+                return control_number
+
+            df1 = pd.read_csv(name_input_csv)
+            df2 = pd.read_csv(birthday_input_csv)
+            input_df = pd.concat([df1, df2], axis=1)
+            input_df['date_of_birth'] = pd.to_datetime(input_df['date_of_birth'], format='%Y-%m-%d')
+            size = input_df.shape[0]
+            id_code_list = []
+            step_of_progress = int(size / 5)
+            #Using a set to ensure that no duplicates are added
+            for index, row in  input_df.iterrows():
+                id_code = ''
+
+                # Gender and first digit of the birth year indicator
+                if row['gender'] == 'M':
+                    if row['date_of_birth'].year < 2000:
+                        id_code += '3'  # Male born in 1900-1999
+                    else:
+                        id_code += '5'  # Male born in 2000-2099
+                elif row['gender'] == 'F':
+                    if row['date_of_birth'].year < 2000:
+                        id_code += '4'  # Female born in 1900-1999
+                    else:
+                        id_code += '6'  # Female born in 2000-2099
+
+                # Birth year
+                birth_year = row['date_of_birth'].year % 100
+                id_code += f'{birth_year:02}'
+
+                # Birth month
+                birth_month = row['date_of_birth'].month
+                id_code += f'{birth_month:02}'
+
+                # Birth day
+                birth_day = row['date_of_birth'].day
+                id_code += f'{birth_day:02}'
+
+                # Serial number
+                serial_number = f'{random.randint(0, 999):03}'
+                id_code += serial_number
+
+                # 11. Control number (0...9)
+                id_code += str(calculate_control_number(id_code))
+
+                id_code_list.append(id_code)
+
+                if len(id_code_list) % step_of_progress == 0:
+                    print(f'{len(id_code_list)} / {size} ID codes generated')
+
+            print('All the ID codes have been generated!')
+            id_df = pd.DataFrame({'id_code':id_code_list})
+            print(id_df.head())
+            df_output = pd.concat([input_df, id_df], axis=1)
+            print(df_output.head(10))
+            df_output.to_csv(output_csv, index=False)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Generate id codes with user data', description='')
+        _parser.add_argument("--name-input-csv", dest="name_input_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--birthday-input-csv", dest="birthday_input_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-csv", dest="output_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = generate_id_codes__with_user_data(**_parsed_args)
+      image: python:3.7
+    inputs:
+      artifacts:
+      - {name: generate-birthday-output, path: /tmp/inputs/birthday_input_csv/data}
+      - {name: generate-names-output_csv, path: /tmp/inputs/name_input_csv/data}
+    outputs:
+      artifacts:
+      - {name: generate-id-codes-with-user-data-output_csv, path: /tmp/outputs/output_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.0
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--name-input-csv", {"inputPath": "name_input_csv"}, "--birthday-input-csv",
+          {"inputPath": "birthday_input_csv"}, "--output-csv", {"outputPath": "output_csv"}],
+          "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip
+          install --quiet --no-warn-script-location ''pandas'' || PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''pandas'' --user)
+          && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\"
+          > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef generate_id_codes__with_user_data(name_input_csv, birthday_input_csv,
+          output_csv):\n    #imports & installs\n    import pandas as pd\n    import
+          random\n    print(''Everything succesfully imported!'')\n\n    def calculate_control_number(id_code):\n        def
+          weighted_sum(weights, code):\n            return sum(w * int(c) for w, c
+          in zip(weights, code))\n\n        level1_weights = [1, 2, 3, 4, 5, 6, 7,
+          8, 9, 1]\n        level2_weights = [3, 4, 5, 6, 7, 8, 9, 1, 2, 3]\n\n        sum_1
+          = weighted_sum(level1_weights, id_code)\n        control_number = sum_1
+          % 11\n        if control_number == 10:\n            sum_2 = weighted_sum(level2_weights,
+          id_code)\n            control_number = sum_2 % 11\n            if control_number
+          == 10:\n                control_number = 0\n\n        return control_number\n\n    df1
+          = pd.read_csv(name_input_csv)\n    df2 = pd.read_csv(birthday_input_csv)\n    input_df
+          = pd.concat([df1, df2], axis=1)\n    input_df[''date_of_birth''] = pd.to_datetime(input_df[''date_of_birth''],
+          format=''%Y-%m-%d'')\n    size = input_df.shape[0]\n    id_code_list = []\n    step_of_progress
+          = int(size / 5)\n    #Using a set to ensure that no duplicates are added\n    for
+          index, row in  input_df.iterrows():\n        id_code = ''''\n\n        #
+          Gender and first digit of the birth year indicator\n        if row[''gender'']
+          == ''M'':\n            if row[''date_of_birth''].year < 2000:\n                id_code
+          += ''3''  # Male born in 1900-1999\n            else:\n                id_code
+          += ''5''  # Male born in 2000-2099\n        elif row[''gender''] == ''F'':\n            if
+          row[''date_of_birth''].year < 2000:\n                id_code += ''4''  #
+          Female born in 1900-1999\n            else:\n                id_code +=
+          ''6''  # Female born in 2000-2099\n\n        # Birth year\n        birth_year
+          = row[''date_of_birth''].year % 100\n        id_code += f''{birth_year:02}''\n\n        #
+          Birth month\n        birth_month = row[''date_of_birth''].month\n        id_code
+          += f''{birth_month:02}''\n\n        # Birth day\n        birth_day = row[''date_of_birth''].day\n        id_code
+          += f''{birth_day:02}''\n\n        # Serial number\n        serial_number
+          = f''{random.randint(0, 999):03}''\n        id_code += serial_number\n\n        #
+          11. Control number (0...9)\n        id_code += str(calculate_control_number(id_code))\n\n        id_code_list.append(id_code)\n\n        if
+          len(id_code_list) % step_of_progress == 0:\n            print(f''{len(id_code_list)}
+          / {size} ID codes generated'')\n\n    print(''All the ID codes have been
+          generated!'')\n    id_df = pd.DataFrame({''id_code'':id_code_list})\n    print(id_df.head())\n    df_output
+          = pd.concat([input_df, id_df], axis=1)\n    print(df_output.head(10))\n    df_output.to_csv(output_csv,
+          index=False)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Generate
+          id codes with user data'', description='''')\n_parser.add_argument(\"--name-input-csv\",
+          dest=\"name_input_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--birthday-input-csv\",
+          dest=\"birthday_input_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-csv\",
+          dest=\"output_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = generate_id_codes__with_user_data(**_parsed_args)\n"], "image": "python:3.7"}},
+          "inputs": [{"name": "name_input_csv", "type": "csv"}, {"name": "birthday_input_csv",
+          "type": "csv"}], "name": "Generate id codes with user data", "outputs":
+          [{"name": "output_csv", "type": "csv"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: generate-names
+    container:
+      args: [--input-dict, '{{inputs.parameters.load-data-Output}}', --n-rows, '{{inputs.parameters.n_rows}}',
+        --mf-ratio, '{{inputs.parameters.mf_ratio}}', --output-csv, /tmp/outputs/output_csv/data]
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'pandas' 'numpy' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install
+        --quiet --no-warn-script-location 'pandas' 'numpy' --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def generate_names(input_dict, n_rows, mf_ratio, output_csv,):
+            import pandas as pd
+            import numpy as np
+
+            def add_ratios(df):
+                df['value'] = df['value'].astype(int)
+                total_sum = df['value'].sum()
+                df['ratio'] = df['value'] / total_sum
+                df.drop(columns=['value'], inplace=True)
+                return df
+
+            def generate_names_from_df(df, n):
+                names = np.random.choice(df['name'], size=n, p=df['ratio'], replace=True)
+                return names
+
+            df_mfn = add_ratios(pd.DataFrame(input_dict['male_first_names']))
+            df_mln = add_ratios(pd.DataFrame(input_dict['male_last_names']))
+            df_ffn = add_ratios(pd.DataFrame(input_dict['female_first_names']))
+            df_fln = add_ratios(pd.DataFrame(input_dict['female_last_names']))
+
+            n_male = int(n_rows * mf_ratio)
+            n_female = n_rows - n_male
+
+            male_first_names = generate_names_from_df(df_mfn, n_male)
+            male_last_names = generate_names_from_df(df_mln, n_male)
+            female_first_names = generate_names_from_df(df_ffn, n_female)
+            female_last_names = generate_names_from_df(df_fln, n_female)
+
+            male_names = pd.DataFrame({
+                'first_name': male_first_names,
+                'last_name': male_last_names,
+                'gender': 'M'
+            })
+
+            female_names = pd.DataFrame({
+                'first_name': female_first_names,
+                'last_name': female_last_names,
+                'gender': 'F'
+            })
+
+            combined_names = pd.concat([male_names, female_names], ignore_index=True)
+            combined_names = combined_names.sample(frac=1)
+
+            combined_names.to_csv(output_csv, index=False)
+
+        import json
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Generate names', description='')
+        _parser.add_argument("--input-dict", dest="input_dict", type=json.loads, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--n-rows", dest="n_rows", type=int, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--mf-ratio", dest="mf_ratio", type=float, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-csv", dest="output_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = generate_names(**_parsed_args)
+      image: python:3.7
+    inputs:
+      parameters:
+      - {name: load-data-Output}
+      - {name: mf_ratio}
+      - {name: n_rows}
+    outputs:
+      artifacts:
+      - {name: generate-names-output_csv, path: /tmp/outputs/output_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.0
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-dict", {"inputValue": "input_dict"}, "--n-rows", {"inputValue":
+          "n_rows"}, "--mf-ratio", {"inputValue": "mf_ratio"}, "--output-csv", {"outputPath":
+          "output_csv"}], "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''pandas'' ''numpy''
+          || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+          ''pandas'' ''numpy'' --user) && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef generate_names(input_dict, n_rows,
+          mf_ratio, output_csv,):\n    import pandas as pd\n    import numpy as np\n\n    def
+          add_ratios(df):\n        df[''value''] = df[''value''].astype(int)\n        total_sum
+          = df[''value''].sum()\n        df[''ratio''] = df[''value''] / total_sum\n        df.drop(columns=[''value''],
+          inplace=True)\n        return df\n\n    def generate_names_from_df(df, n):\n        names
+          = np.random.choice(df[''name''], size=n, p=df[''ratio''], replace=True)\n        return
+          names\n\n    df_mfn = add_ratios(pd.DataFrame(input_dict[''male_first_names'']))\n    df_mln
+          = add_ratios(pd.DataFrame(input_dict[''male_last_names'']))\n    df_ffn
+          = add_ratios(pd.DataFrame(input_dict[''female_first_names'']))\n    df_fln
+          = add_ratios(pd.DataFrame(input_dict[''female_last_names'']))\n\n    n_male
+          = int(n_rows * mf_ratio)\n    n_female = n_rows - n_male\n\n    male_first_names
+          = generate_names_from_df(df_mfn, n_male)\n    male_last_names = generate_names_from_df(df_mln,
+          n_male)\n    female_first_names = generate_names_from_df(df_ffn, n_female)\n    female_last_names
+          = generate_names_from_df(df_fln, n_female)\n\n    male_names = pd.DataFrame({\n        ''first_name'':
+          male_first_names,\n        ''last_name'': male_last_names,\n        ''gender'':
+          ''M''\n    })\n\n    female_names = pd.DataFrame({\n        ''first_name'':
+          female_first_names,\n        ''last_name'': female_last_names,\n        ''gender'':
+          ''F''\n    })\n\n    combined_names = pd.concat([male_names, female_names],
+          ignore_index=True)\n    combined_names = combined_names.sample(frac=1)\n\n    combined_names.to_csv(output_csv,
+          index=False)\n\nimport json\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Generate
+          names'', description='''')\n_parser.add_argument(\"--input-dict\", dest=\"input_dict\",
+          type=json.loads, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--n-rows\",
+          dest=\"n_rows\", type=int, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--mf-ratio\",
+          dest=\"mf_ratio\", type=float, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-csv\",
+          dest=\"output_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = generate_names(**_parsed_args)\n"], "image": "python:3.7"}}, "inputs":
+          [{"name": "input_dict", "type": "JsonObject"}, {"name": "n_rows", "type":
+          "Integer"}, {"name": "mf_ratio", "type": "Float"}], "name": "Generate names",
+          "outputs": [{"name": "output_csv", "type": "csv"}]}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"input_dict": "{{inputs.parameters.load-data-Output}}",
+          "mf_ratio": "{{inputs.parameters.mf_ratio}}", "n_rows": "{{inputs.parameters.n_rows}}"}'}
+  - name: load-data
+    container:
+      args: [--input-dir, mnt/data/datasets, '----output-paths', /tmp/outputs/Output/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def load_data(input_dir):
+            import os
+            import csv
+
+            files = os.listdir(input_dir)
+            name_data = {}
+            for file in files:
+                file_path = os.path.join(input_dir, file)  # Create the full path
+                with open(file_path, mode='r', newline='') as csv_file:
+                    csv_reader = csv.DictReader(csv_file)
+
+                    list_of_dicts = [row for row in csv_reader]
+
+                file_name, file_extension = os.path.splitext(os.path.basename(file))
+                name_data[file_name] = list_of_dicts
+
+            return name_data
+
+        def _serialize_json(obj) -> str:
+            if isinstance(obj, str):
+                return obj
+            import json
+
+            def default_serializer(obj):
+                if hasattr(obj, 'to_struct'):
+                    return obj.to_struct()
+                else:
+                    raise TypeError(
+                        "Object of type '%s' is not JSON serializable and does not have .to_struct() method."
+                        % obj.__class__.__name__)
+
+            return json.dumps(obj, default=default_serializer, sort_keys=True)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Load data', description='')
+        _parser.add_argument("--input-dir", dest="input_dir", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("----output-paths", dest="_output_paths", type=str, nargs=1)
+        _parsed_args = vars(_parser.parse_args())
+        _output_files = _parsed_args.pop("_output_paths", [])
+
+        _outputs = load_data(**_parsed_args)
+
+        _outputs = [_outputs]
+
+        _output_serializers = [
+            _serialize_json,
+
+        ]
+
+        import os
+        for idx, output_file in enumerate(_output_files):
+            try:
+                os.makedirs(os.path.dirname(output_file))
+            except OSError:
+                pass
+            with open(output_file, 'w') as f:
+                f.write(_output_serializers[idx](_outputs[idx]))
+      image: python:3.7
+      volumeMounts:
+      - {mountPath: /mnt/data, name: pvolume-1a69ae5c794bda129e27a697ce7318625ffd4d0c2a8119fbf1d2cc5}
+    outputs:
+      parameters:
+      - name: load-data-Output
+        valueFrom: {path: /tmp/outputs/Output/data}
+      artifacts:
+      - {name: load-data-Output, path: /tmp/outputs/Output/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.0
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-dir", {"inputValue": "input_dir"}, "----output-paths",
+          {"outputPath": "Output"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def load_data(input_dir):\n    import os\n    import csv\n\n    files =
+          os.listdir(input_dir)\n    name_data = {}\n    for file in files:\n        file_path
+          = os.path.join(input_dir, file)  # Create the full path\n        with open(file_path,
+          mode=''r'', newline='''') as csv_file:\n            csv_reader = csv.DictReader(csv_file)\n\n            list_of_dicts
+          = [row for row in csv_reader]\n\n        file_name, file_extension = os.path.splitext(os.path.basename(file))\n        name_data[file_name]
+          = list_of_dicts\n\n    return name_data\n\ndef _serialize_json(obj) -> str:\n    if
+          isinstance(obj, str):\n        return obj\n    import json\n\n    def default_serializer(obj):\n        if
+          hasattr(obj, ''to_struct''):\n            return obj.to_struct()\n        else:\n            raise
+          TypeError(\n                \"Object of type ''%s'' is not JSON serializable
+          and does not have .to_struct() method.\"\n                % obj.__class__.__name__)\n\n    return
+          json.dumps(obj, default=default_serializer, sort_keys=True)\n\nimport argparse\n_parser
+          = argparse.ArgumentParser(prog=''Load data'', description='''')\n_parser.add_argument(\"--input-dir\",
+          dest=\"input_dir\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\",
+          dest=\"_output_paths\", type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+          = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = load_data(**_parsed_args)\n\n_outputs
+          = [_outputs]\n\n_output_serializers = [\n    _serialize_json,\n\n]\n\nimport
+          os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+          OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+          "image": "python:3.7"}}, "inputs": [{"name": "input_dir", "type": "String"}],
+          "name": "Load data", "outputs": [{"name": "Output", "type": "JsonObject"}]}',
+        pipelines.kubeflow.org/component_ref: '{}', pipelines.kubeflow.org/arguments.parameters: '{"input_dir":
+          "mnt/data/datasets"}'}
+    volumes:
+    - name: pvolume-1a69ae5c794bda129e27a697ce7318625ffd4d0c2a8119fbf1d2cc5
+      persistentVolumeClaim: {claimName: egp-pvc}
+  - name: output
+    container:
+      args: [--id-code, /tmp/inputs/id_code/data, --addresses, /tmp/inputs/addresses/data,
+        --email, /tmp/inputs/email/data, --output, /tmp/outputs/output/data]
+      command:
+      - sh
+      - -c
+      - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+        'pandas' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet
+        --no-warn-script-location 'pandas' --user) && "$0" "$@"
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def output(id_code,
+                   addresses,
+                   email,
+                   output
+                   ):
+            import pandas as pd
+
+            df1 = pd.read_csv(id_code)
+            df2 = pd.read_csv(addresses)
+            df3 = pd.read_csv(email)
+            final_df = pd.concat([df1, df2, df3], axis=1)
+
+            print(final_df.head())
+            final_df.to_csv(output, index=False)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Output', description='')
+        _parser.add_argument("--id-code", dest="id_code", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--addresses", dest="addresses", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--email", dest="email", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output", dest="output", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = output(**_parsed_args)
+      image: python:3.7
+    inputs:
+      artifacts:
+      - {name: generate-addresses-output_csv, path: /tmp/inputs/addresses/data}
+      - {name: email-output_csv, path: /tmp/inputs/email/data}
+      - {name: generate-id-codes-with-user-data-output_csv, path: /tmp/inputs/id_code/data}
+    outputs:
+      artifacts:
+      - {name: output-output, path: /tmp/outputs/output/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.0
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--id-code", {"inputPath": "id_code"}, "--addresses", {"inputPath":
+          "addresses"}, "--email", {"inputPath": "email"}, "--output", {"outputPath":
+          "output"}], "command": ["sh", "-c", "(PIP_DISABLE_PIP_VERSION_CHECK=1 python3
+          -m pip install --quiet --no-warn-script-location ''pandas'' || PIP_DISABLE_PIP_VERSION_CHECK=1
+          python3 -m pip install --quiet --no-warn-script-location ''pandas'' --user)
+          && \"$0\" \"$@\"", "sh", "-ec", "program_path=$(mktemp)\nprintf \"%s\" \"$0\"
+          > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n", "def _make_parent_dirs_and_return_path(file_path:
+          str):\n    import os\n    os.makedirs(os.path.dirname(file_path), exist_ok=True)\n    return
+          file_path\n\ndef output(id_code,\n           addresses,\n           email,\n           output\n           ):\n    import
+          pandas as pd\n\n    df1 = pd.read_csv(id_code)\n    df2 = pd.read_csv(addresses)\n    df3
+          = pd.read_csv(email)\n    final_df = pd.concat([df1, df2, df3], axis=1)\n\n    print(final_df.head())\n    final_df.to_csv(output,
+          index=False)\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Output'',
+          description='''')\n_parser.add_argument(\"--id-code\", dest=\"id_code\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--addresses\",
+          dest=\"addresses\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--email\",
+          dest=\"email\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output\",
+          dest=\"output\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = output(**_parsed_args)\n"], "image": "python:3.7"}}, "inputs": [{"name":
+          "id_code", "type": "csv"}, {"name": "addresses", "type": "csv"}, {"name":
+          "email", "type": "csv"}], "name": "Output", "outputs": [{"name": "output",
+          "type": "csv"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  arguments:
+    parameters:
+    - {name: n_rows}
+    - {name: min_age, value: '16'}
+    - {name: max_age, value: '85'}
+    - {name: mf_ratio, value: '0.5'}
+  serviceAccountName: pipeline-runner

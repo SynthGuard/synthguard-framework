@@ -1,0 +1,77 @@
+name: Send transaction
+inputs:
+- {name: transaction, type: JsonObject}
+- {name: host_ip, type: String}
+- {name: port, type: Integer}
+implementation:
+  container:
+    image: python:3.7
+    command:
+    - sh
+    - -c
+    - (PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet --no-warn-script-location
+      'requests' || PIP_DISABLE_PIP_VERSION_CHECK=1 python3 -m pip install --quiet
+      --no-warn-script-location 'requests' --user) && "$0" "$@"
+    - sh
+    - -ec
+    - |
+      program_path=$(mktemp)
+      printf "%s" "$0" > "$program_path"
+      python3 -u "$program_path" "$@"
+    - |
+      def send_transaction(transaction, host_ip, port):
+          import time
+          import requests
+
+          def wait_for_port(host, port, timeout = 60):
+              """
+              Wait until the port on the host is open or the timeout is reached.
+              """
+              import socket
+
+              start_time = time.time()
+              while time.time() - start_time < timeout:
+                  with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                      result = sock.connect_ex((host, port))
+                      if result == 0:
+                          return True
+                      time.sleep(1)
+              return False
+
+          """
+          Waits until the service port on the host machine is open and then sends a POST request.
+          """
+          api_url = f'http://{host_ip}:{port}'
+
+          # Wait until the port is available
+          if wait_for_port(host_ip, port):
+              print(f"Port {port} on host {host_ip} is open. Sending POST request...")
+
+              try:
+                  headers = {
+                      'Content-Type': 'application/json'
+                  }
+                  response = requests.post(api_url, json=transaction, headers=headers)
+                  response.raise_for_status()
+                  print(f'Payment successful! Response: {response.json()}')
+              except requests.exceptions.RequestException as e:
+                  print(f'Error: {e}')
+          else:
+              print(f"Port {port} on host {host_ip} is not open after waiting.")
+
+      import json
+      import argparse
+      _parser = argparse.ArgumentParser(prog='Send transaction', description='')
+      _parser.add_argument("--transaction", dest="transaction", type=json.loads, required=True, default=argparse.SUPPRESS)
+      _parser.add_argument("--host-ip", dest="host_ip", type=str, required=True, default=argparse.SUPPRESS)
+      _parser.add_argument("--port", dest="port", type=int, required=True, default=argparse.SUPPRESS)
+      _parsed_args = vars(_parser.parse_args())
+
+      _outputs = send_transaction(**_parsed_args)
+    args:
+    - --transaction
+    - {inputValue: transaction}
+    - --host-ip
+    - {inputValue: host_ip}
+    - --port
+    - {inputValue: port}

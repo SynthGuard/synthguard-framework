@@ -1,0 +1,21 @@
+{
+    "pipeline_name": "police_call_pipeline",
+    "pipeline_description": "Police & Border Guard (PPA) police call dataset synthetic data pipeline",
+    "components":{
+        "kfp_functions": true,
+        "local_functions": true,
+        "input":{
+            "type": "csv",
+            "n_rows": 10000,
+            "source": "https://opendata.smit.ee/ppa/csv/valjakutsed.csv"
+        },
+        "preprocess":{},
+        "generation":{
+            "type": "realistic",
+            "n_rows": 1000
+        },
+        "privacy_report":{},
+        "utility_report":{},
+        "diagnostic_report":{}
+    }
+}
