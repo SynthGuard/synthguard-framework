@@ -8,7 +8,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y git
 
 # Install synthguard
-RUN pip install synthguard
+RUN pip install git+https://github.com/SynthGuard/synthguard-library.git
 
 # Copy the rest of your application code
 COPY . /app

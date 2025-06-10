@@ -4,8 +4,7 @@
 
 1. Workflow Execution Deployment (Nix + Minikube + KFP)
 2. Running Pipelines
-3. Setting up Docker Image
-4. Developing SDG Pipelines with the Automation Tool
+3. Developing SDG Pipelines with the Automation Tool
 
 ## Workflow Execution Deployment (Nix + Minikube + KFP)
 
@@ -27,8 +26,8 @@ Connect to the cluster by running:
 
 ### Steps to Run a Pipeline
 
-1. Navigate to the `pipelines/` directory, which contains subfolders for each demo pipeline (e.g., `TEADAL`, `iris_pipeline`, `LAGO`).
-2. Choose the desired pipeline YAML file (e.g., `LAGO_pipeline.yaml`).
+1. Navigate to the `pipelines/` directory, which contains subfolders for each demo pipeline.
+2. Choose the desired pipeline YAML file (e.g., [`LAGO_pipeline.yaml`](pipelines/LAGO/LAGO_pipeline.yaml)).
 3. Open the KFP dashboard at `localhost:8080`.
 4. Go to the **Pipelines** tab and click **Upload Pipeline**.
 5. Choose the YAML file and provide a name if prompted.
@@ -44,15 +43,6 @@ Connect to the cluster by running:
 - Follow execution status in the graphical DAG.
 - Click on individual components to view logs, outputs, and visualizations.
 - Download output artifacts or open generated HTML reports.
-
-## Setting up Docker image
-
-1. Build the Docker image using the Dockerfile located in the docker/ directory:
-```docker build -t <your-docker-registry>/<image-name>:<tag> docker/```
-2. Push the image to your chosen Docker registry:
-```docker push <your-docker-registry>/<image-name>:<tag>```
-3. Add the registry credentials to nix/kfp-start.nix before running it
-4. Define base image using kfp SDK
 
 ## Develop SDG pipeline with automation tool
 
