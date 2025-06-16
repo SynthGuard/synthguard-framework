@@ -1,0 +1,21 @@
+{
+    "pipeline_name": "gun_ownership_pipeline",
+    "pipeline_description": "Gun ownership dataset synthetic data pipeline",
+    "components": {
+        "kfp_functions": true,
+        "local_functions": true,
+        "input": {
+            "type": "csv",
+            "n_rows": 500,
+            "source": "https://example.com/gun_ownership.csv"
+        },
+        "preprocess": {},
+        "generation": {
+            "type": "realistic",
+            "n_rows": 1000
+        },
+        "privacy_report": {},
+        "utility_report": {},
+        "diagnostic_report": {}
+    }
+}

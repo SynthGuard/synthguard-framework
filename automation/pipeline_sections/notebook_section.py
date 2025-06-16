@@ -24,7 +24,7 @@ def {component_name}(parameters):
     #Component logic
 {indented_code}
     # Compiling function into a KFP component
-{component_name} = comp.create_component_from_func(func={component_name}, base_image={base_image})
+{component_name} = comp.create_component_from_func(func={component_name}, base_image='{base_image}')
 """
         parameters = "input_csv: comp.InputPath('csv'), output_csv: comp.OutputPath('csv')"
         template = template.replace('parameters', parameters)
@@ -61,7 +61,7 @@ def {component_name}(parameters) -> NamedTuple('VisualizationOutput', [('mlpipel
     return visualization_output(json.dumps(metadata))
 
     # Compiling function into a KFP component
-{component_name} = comp.create_component_from_func(func={component_name}, base_image={base_image})
+{component_name} = comp.create_component_from_func(func={component_name}, base_image='{base_image}')
 """
         parameters = "input_synth_csv: comp.InputPath('csv'), input_real_csv: comp.InputPath('csv'), input_json:comp.InputPath('json'), output_html: comp.OutputPath('html')"
         template = template.replace('parameters', parameters)

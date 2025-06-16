@@ -1,1 +1,3 @@
 automation/__pycache__/
+automation/pipeline_sections/__pycache__/
+.venv/

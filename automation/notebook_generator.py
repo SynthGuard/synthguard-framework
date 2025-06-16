@@ -87,7 +87,7 @@ def pipeline():
         self.add_code_cell(f'Compiler().compile(pipeline, "{self.pipeline_name}.yaml")')
 
         # Mandatory to run! Adds image pull secret
-        self.add_markdown_cell('## Add ImagePullSecret. Mandatory to run for Kubeflow execution!')
+        self.add_markdown_cell('## Add ImagePullSecret if necessary')
         imagePullCode = f"""
 import yaml
 with open("{self.pipeline_name}.yaml", "r") as file:
