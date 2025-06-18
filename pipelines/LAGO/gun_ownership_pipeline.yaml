@@ -1,0 +1,726 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: gun-ownership-pipeline-
+  annotations: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.22, pipelines.kubeflow.org/pipeline_compilation_time: '2025-06-18T13:39:35.061638',
+    pipelines.kubeflow.org/pipeline_spec: '{"description": "Gun ownership dataset
+      synthetic data pipeline", "inputs": [{"name": "n_rows", "type": "Integer"}],
+      "name": "gun_ownership_pipeline"}'}
+  labels: {pipelines.kubeflow.org/kfp_sdk_version: 1.8.22}
+spec:
+  entrypoint: gun-ownership-pipeline
+  templates:
+  - name: diagnostic-report-component
+    container:
+      args: [--input-synth-csv, /tmp/inputs/input_synth_csv/data, --input-real-csv,
+        /tmp/inputs/input_real_csv/data, --input-json, /tmp/inputs/input_json/data,
+        --output-html, /tmp/outputs/output_html/data, '----output-paths', /tmp/outputs/mlpipeline_ui_metadata/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def diagnostic_report_component(input_synth_csv , input_real_csv , input_json, output_html )    :
+            import synthguard.helper_functions as sd
+            import json
+
+            with open(output_html, "w") as f:
+                f.write("<html><body>")  # Start the HTML document
+
+            #Component logic
+            from synthguard.diagnostic_report_generator import DiagnosticEvaluator
+            real_data = sd.load_data_csv(input_real_csv)
+            synthetic_data = sd.load_data_csv(input_synth_csv)
+            metadata = sd.load_metadata(input_json)
+
+            diagnosticEvaluator = DiagnosticEvaluator(real_data=real_data, synthetic_data=synthetic_data, metadata=metadata)
+            diagnosticEvaluator.run_diagnostic_realistic()
+            diagnosticEvaluator.plot_diagnostic_report_realistic()
+            diagnosticEvaluator.save_plot_to_html(output_html)
+
+            #Write visualization elements into output_html file
+
+            # Read the HTML content for UI metadata
+            with open(output_html, 'r') as file:
+                html_content = file.read()
+            metadata = {
+                'outputs': [{'type': 'web-app', 'storage': 'inline', 'source': html_content}]
+            }
+
+            from collections import namedtuple
+            visualization_output = namedtuple('VisualizationOutput', ['mlpipeline_ui_metadata'])
+            return visualization_output(json.dumps(metadata))
+
+            # Compiling function into a KFP component
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Diagnostic report component', description='')
+        _parser.add_argument("--input-synth-csv", dest="input_synth_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-real-csv", dest="input_real_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-json", dest="input_json", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-html", dest="output_html", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("----output-paths", dest="_output_paths", type=str, nargs=1)
+        _parsed_args = vars(_parser.parse_args())
+        _output_files = _parsed_args.pop("_output_paths", [])
+
+        _outputs = diagnostic_report_component(**_parsed_args)
+
+        _output_serializers = [
+            str,
+
+        ]
+
+        import os
+        for idx, output_file in enumerate(_output_files):
+            try:
+                os.makedirs(os.path.dirname(output_file))
+            except OSError:
+                pass
+            with open(output_file, 'w') as f:
+                f.write(_output_serializers[idx](_outputs[idx]))
+      image: kristiantamm/synthguard_public:latest
+    inputs:
+      artifacts:
+      - {name: preprocess-component-output_json, path: /tmp/inputs/input_json/data}
+      - {name: input-component-output_csv, path: /tmp/inputs/input_real_csv/data}
+      - {name: generation-component-output_csv, path: /tmp/inputs/input_synth_csv/data}
+    outputs:
+      artifacts:
+      - {name: mlpipeline-ui-metadata, path: /tmp/outputs/mlpipeline_ui_metadata/data}
+      - {name: diagnostic-report-component-output_html, path: /tmp/outputs/output_html/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-synth-csv", {"inputPath": "input_synth_csv"}, "--input-real-csv",
+          {"inputPath": "input_real_csv"}, "--input-json", {"inputPath": "input_json"},
+          "--output-html", {"outputPath": "output_html"}, "----output-paths", {"outputPath":
+          "mlpipeline_ui_metadata"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef diagnostic_report_component(input_synth_csv
+          , input_real_csv , input_json, output_html )    :\n    import synthguard.helper_functions
+          as sd\n    import json\n\n    with open(output_html, \"w\") as f:\n        f.write(\"<html><body>\")  #
+          Start the HTML document\n\n    #Component logic\n    from synthguard.diagnostic_report_generator
+          import DiagnosticEvaluator\n    real_data = sd.load_data_csv(input_real_csv)\n    synthetic_data
+          = sd.load_data_csv(input_synth_csv)\n    metadata = sd.load_metadata(input_json)\n\n    diagnosticEvaluator
+          = DiagnosticEvaluator(real_data=real_data, synthetic_data=synthetic_data,
+          metadata=metadata)\n    diagnosticEvaluator.run_diagnostic_realistic()\n    diagnosticEvaluator.plot_diagnostic_report_realistic()\n    diagnosticEvaluator.save_plot_to_html(output_html)\n\n    #Write
+          visualization elements into output_html file\n\n    # Read the HTML content
+          for UI metadata\n    with open(output_html, ''r'') as file:\n        html_content
+          = file.read()\n    metadata = {\n        ''outputs'': [{''type'': ''web-app'',
+          ''storage'': ''inline'', ''source'': html_content}]\n    }\n\n    from collections
+          import namedtuple\n    visualization_output = namedtuple(''VisualizationOutput'',
+          [''mlpipeline_ui_metadata''])\n    return visualization_output(json.dumps(metadata))\n\n    #
+          Compiling function into a KFP component\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Diagnostic
+          report component'', description='''')\n_parser.add_argument(\"--input-synth-csv\",
+          dest=\"input_synth_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-real-csv\",
+          dest=\"input_real_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-json\",
+          dest=\"input_json\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-html\",
+          dest=\"output_html\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\", dest=\"_output_paths\",
+          type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+          = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = diagnostic_report_component(**_parsed_args)\n\n_output_serializers
+          = [\n    str,\n\n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+          OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+          "image": "kristiantamm/synthguard_public:latest"}}, "inputs": [{"name":
+          "input_synth_csv", "type": "csv"}, {"name": "input_real_csv", "type": "csv"},
+          {"name": "input_json", "type": "json"}], "name": "Diagnostic report component",
+          "outputs": [{"name": "output_html", "type": "html"}, {"name": "mlpipeline_ui_metadata",
+          "type": "UI_metadata"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: generation-component
+    container:
+      args: [--n-rows, '{{inputs.parameters.n_rows}}', --input-csv, /tmp/inputs/input_csv/data,
+        --input-json, /tmp/inputs/input_json/data, --output-csv, /tmp/outputs/output_csv/data,
+        --mlpipeline-ui-metadata, /tmp/outputs/mlpipeline_ui_metadata/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def generation_component(n_rows, input_csv , input_json, output_csv , mlpipeline_ui_metadata_path ):
+            import synthguard.helper_functions as sd
+            #Component logic
+            from synthguard.synthetic_data_generator import SyntheticDataGenerator
+            from synthguard.generate_personal_data import PersonalFaker
+            import json
+            processed_data = sd.load_data_csv(input_csv)
+            metadata = sd.load_metadata(input_json)
+            syntheticDataGenerator = SyntheticDataGenerator(output_csv=None, n_rows=n_rows, method="realistic")
+            generated_data = syntheticDataGenerator.generate_synthetic_data(metadata=metadata, processed_data=processed_data)
+            # Add Estonian names and surnames
+            personal_faker = PersonalFaker()
+            for idx, row in generated_data.iterrows():
+                if 'Gender' in row and 'Full Name' in row:
+                    if row['Gender'] == 'Male':
+                        first_name = personal_faker.first_name_male_est()
+                        last_name = personal_faker.last_name_est()
+                    elif row['Gender'] == 'Female':
+                        first_name = personal_faker.first_name_female_est()
+                        last_name = personal_faker.last_name_est()
+                    else:
+                        first_name = personal_faker.first_name_est()
+                        last_name = personal_faker.last_name_est()
+                    generated_data.at[idx, 'Full Name'] = f"{first_name} {last_name}"
+
+            # Add residential addresses
+            addresses = personal_faker.generate_local_addresses(len(generated_data))
+            generated_data['Residential Address'] = [f"{street}, {city}" for street, city in addresses]
+
+            sd.save_to_csv(generated_data, output_csv)
+
+            #Visualize the generated data
+            first_10 = generated_data.head(10)
+            table_metadata = {
+                'outputs': [{
+                    'type': 'table',
+                    'storage': 'inline',
+                    'format': 'csv',
+                    'header': list(first_10.columns),
+                    'source': first_10.to_csv(index=False)
+                }]
+            }
+            with open(mlpipeline_ui_metadata_path, 'w') as f:
+                json.dump(table_metadata, f)
+
+            # Compiling function into a KFP component
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Generation component', description='')
+        _parser.add_argument("--n-rows", dest="n_rows", type=int, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-csv", dest="input_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-json", dest="input_json", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-csv", dest="output_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--mlpipeline-ui-metadata", dest="mlpipeline_ui_metadata_path", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = generation_component(**_parsed_args)
+      image: kristiantamm/synthguard_public:latest
+    inputs:
+      parameters:
+      - {name: n_rows}
+      artifacts:
+      - {name: input-component-output_csv, path: /tmp/inputs/input_csv/data}
+      - {name: preprocess-component-output_json, path: /tmp/inputs/input_json/data}
+    outputs:
+      artifacts:
+      - {name: mlpipeline-ui-metadata, path: /tmp/outputs/mlpipeline_ui_metadata/data}
+      - {name: generation-component-output_csv, path: /tmp/outputs/output_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--n-rows", {"inputValue": "n_rows"}, "--input-csv", {"inputPath":
+          "input_csv"}, "--input-json", {"inputPath": "input_json"}, "--output-csv",
+          {"outputPath": "output_csv"}, "--mlpipeline-ui-metadata", {"outputPath":
+          "mlpipeline_ui_metadata"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef generation_component(n_rows,
+          input_csv , input_json, output_csv , mlpipeline_ui_metadata_path ):\n    import
+          synthguard.helper_functions as sd\n    #Component logic\n    from synthguard.synthetic_data_generator
+          import SyntheticDataGenerator\n    from synthguard.generate_personal_data
+          import PersonalFaker\n    import json\n    processed_data = sd.load_data_csv(input_csv)\n    metadata
+          = sd.load_metadata(input_json)\n    syntheticDataGenerator = SyntheticDataGenerator(output_csv=None,
+          n_rows=n_rows, method=\"realistic\")\n    generated_data = syntheticDataGenerator.generate_synthetic_data(metadata=metadata,
+          processed_data=processed_data)\n    # Add Estonian names and surnames\n    personal_faker
+          = PersonalFaker()\n    for idx, row in generated_data.iterrows():\n        if
+          ''Gender'' in row and ''Full Name'' in row:\n            if row[''Gender'']
+          == ''Male'':\n                first_name = personal_faker.first_name_male_est()\n                last_name
+          = personal_faker.last_name_est()\n            elif row[''Gender''] == ''Female'':\n                first_name
+          = personal_faker.first_name_female_est()\n                last_name = personal_faker.last_name_est()\n            else:\n                first_name
+          = personal_faker.first_name_est()\n                last_name = personal_faker.last_name_est()\n            generated_data.at[idx,
+          ''Full Name''] = f\"{first_name} {last_name}\"\n\n    # Add residential
+          addresses\n    addresses = personal_faker.generate_local_addresses(len(generated_data))\n    generated_data[''Residential
+          Address''] = [f\"{street}, {city}\" for street, city in addresses]\n\n    sd.save_to_csv(generated_data,
+          output_csv)\n\n    #Visualize the generated data\n    first_10 = generated_data.head(10)\n    table_metadata
+          = {\n        ''outputs'': [{\n            ''type'': ''table'',\n            ''storage'':
+          ''inline'',\n            ''format'': ''csv'',\n            ''header'': list(first_10.columns),\n            ''source'':
+          first_10.to_csv(index=False)\n        }]\n    }\n    with open(mlpipeline_ui_metadata_path,
+          ''w'') as f:\n        json.dump(table_metadata, f)\n\n    # Compiling function
+          into a KFP component\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Generation
+          component'', description='''')\n_parser.add_argument(\"--n-rows\", dest=\"n_rows\",
+          type=int, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-csv\",
+          dest=\"input_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-json\",
+          dest=\"input_json\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-csv\",
+          dest=\"output_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"--mlpipeline-ui-metadata\",
+          dest=\"mlpipeline_ui_metadata_path\", type=_make_parent_dirs_and_return_path,
+          required=True, default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = generation_component(**_parsed_args)\n"], "image": "kristiantamm/synthguard_public:latest"}},
+          "inputs": [{"name": "n_rows", "type": "Integer"}, {"name": "input_csv",
+          "type": "csv"}, {"name": "input_json", "type": "json"}], "name": "Generation
+          component", "outputs": [{"name": "output_csv", "type": "csv"}, {"name":
+          "mlpipeline_ui_metadata"}]}', pipelines.kubeflow.org/component_ref: '{}',
+        pipelines.kubeflow.org/arguments.parameters: '{"n_rows": "{{inputs.parameters.n_rows}}"}'}
+  - name: gun-ownership-pipeline
+    inputs:
+      parameters:
+      - {name: n_rows}
+    dag:
+      tasks:
+      - name: diagnostic-report-component
+        template: diagnostic-report-component
+        dependencies: [generation-component, input-component, preprocess-component]
+        arguments:
+          artifacts:
+          - {name: generation-component-output_csv, from: '{{tasks.generation-component.outputs.artifacts.generation-component-output_csv}}'}
+          - {name: input-component-output_csv, from: '{{tasks.input-component.outputs.artifacts.input-component-output_csv}}'}
+          - {name: preprocess-component-output_json, from: '{{tasks.preprocess-component.outputs.artifacts.preprocess-component-output_json}}'}
+      - name: generation-component
+        template: generation-component
+        dependencies: [input-component, preprocess-component]
+        arguments:
+          parameters:
+          - {name: n_rows, value: '{{inputs.parameters.n_rows}}'}
+          artifacts:
+          - {name: input-component-output_csv, from: '{{tasks.input-component.outputs.artifacts.input-component-output_csv}}'}
+          - {name: preprocess-component-output_json, from: '{{tasks.preprocess-component.outputs.artifacts.preprocess-component-output_json}}'}
+      - {name: input-component, template: input-component}
+      - name: preprocess-component
+        template: preprocess-component
+        dependencies: [input-component]
+        arguments:
+          artifacts:
+          - {name: input-component-output_csv, from: '{{tasks.input-component.outputs.artifacts.input-component-output_csv}}'}
+      - name: privacy-report-component
+        template: privacy-report-component
+        dependencies: [generation-component, input-component, preprocess-component]
+        arguments:
+          artifacts:
+          - {name: generation-component-output_csv, from: '{{tasks.generation-component.outputs.artifacts.generation-component-output_csv}}'}
+          - {name: input-component-output_csv, from: '{{tasks.input-component.outputs.artifacts.input-component-output_csv}}'}
+          - {name: preprocess-component-output_json, from: '{{tasks.preprocess-component.outputs.artifacts.preprocess-component-output_json}}'}
+      - name: utility-report-component
+        template: utility-report-component
+        dependencies: [generation-component, input-component, preprocess-component]
+        arguments:
+          artifacts:
+          - {name: generation-component-output_csv, from: '{{tasks.generation-component.outputs.artifacts.generation-component-output_csv}}'}
+          - {name: input-component-output_csv, from: '{{tasks.input-component.outputs.artifacts.input-component-output_csv}}'}
+          - {name: preprocess-component-output_json, from: '{{tasks.preprocess-component.outputs.artifacts.preprocess-component-output_json}}'}
+  - name: input-component
+    container:
+      args: [--output-csv, /tmp/outputs/output_csv/data, --mlpipeline-ui-metadata,
+        /tmp/outputs/mlpipeline_ui_metadata/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def input_component(output_csv , mlpipeline_ui_metadata_path ):
+            import synthguard.helper_functions as sd
+            #Component logic
+            from synthguard.input_handler import InputHandler
+            import json
+            import pandas as pd
+            inputHandler = InputHandler()
+            inputHandler.load_data_csv("https://raw.githubusercontent.com/SynthGuard/synthguard-framework/main/pipelines/LAGO/synthetic_datasets/expanded_gun_ownership_dataset.csv")
+            inputHandler.data = inputHandler.data.replace([pd.NA, None, '-'], 'None')
+            sd.save_to_csv(inputHandler.data, output_csv)
+
+            # Visualize the data
+            first_10 = inputHandler.data.head(10)
+            table_metadata = {
+                'outputs': [{
+                    'type': 'table',
+                    'storage': 'inline',
+                    'format': 'csv',
+                    'header': list(first_10.columns),
+                    'source': first_10.to_csv(index=False)
+                }]
+            }
+
+            with open(mlpipeline_ui_metadata_path, 'w') as f:
+                json.dump(table_metadata, f)
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Input component', description='')
+        _parser.add_argument("--output-csv", dest="output_csv", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--mlpipeline-ui-metadata", dest="mlpipeline_ui_metadata_path", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = input_component(**_parsed_args)
+      image: kristiantamm/synthguard_public:latest
+    outputs:
+      artifacts:
+      - {name: mlpipeline-ui-metadata, path: /tmp/outputs/mlpipeline_ui_metadata/data}
+      - {name: input-component-output_csv, path: /tmp/outputs/output_csv/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--output-csv", {"outputPath": "output_csv"}, "--mlpipeline-ui-metadata",
+          {"outputPath": "mlpipeline_ui_metadata"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef input_component(output_csv ,
+          mlpipeline_ui_metadata_path ):\n    import synthguard.helper_functions as
+          sd\n    #Component logic\n    from synthguard.input_handler import InputHandler\n    import
+          json\n    import pandas as pd\n    inputHandler = InputHandler()\n    inputHandler.load_data_csv(\"https://raw.githubusercontent.com/SynthGuard/synthguard-framework/main/pipelines/LAGO/synthetic_datasets/expanded_gun_ownership_dataset.csv\")\n    inputHandler.data
+          = inputHandler.data.replace([pd.NA, None, ''-''], ''None'')\n    sd.save_to_csv(inputHandler.data,
+          output_csv)\n\n    # Visualize the data\n    first_10 = inputHandler.data.head(10)\n    table_metadata
+          = {\n        ''outputs'': [{\n            ''type'': ''table'',\n            ''storage'':
+          ''inline'',\n            ''format'': ''csv'',\n            ''header'': list(first_10.columns),\n            ''source'':
+          first_10.to_csv(index=False)\n        }]\n    }\n\n    with open(mlpipeline_ui_metadata_path,
+          ''w'') as f:\n        json.dump(table_metadata, f)\n\nimport argparse\n_parser
+          = argparse.ArgumentParser(prog=''Input component'', description='''')\n_parser.add_argument(\"--output-csv\",
+          dest=\"output_csv\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"--mlpipeline-ui-metadata\",
+          dest=\"mlpipeline_ui_metadata_path\", type=_make_parent_dirs_and_return_path,
+          required=True, default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = input_component(**_parsed_args)\n"], "image": "kristiantamm/synthguard_public:latest"}},
+          "name": "Input component", "outputs": [{"name": "output_csv", "type": "csv"},
+          {"name": "mlpipeline_ui_metadata"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: preprocess-component
+    container:
+      args: [--input-csv, /tmp/inputs/input_csv/data, --output-json, /tmp/outputs/output_json/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def preprocess_component(input_csv , output_json ):
+            import synthguard.helper_functions as sd
+            #Component logic
+            from synthguard.data_preprocessor import DataPreprocessor
+            input_data = sd.load_data_csv(input_csv)
+            dataPreprocessor = DataPreprocessor(data=input_data)
+            metadata = dataPreprocessor.extract_metadata()
+            sd.save_metadata(metadata, output_json)
+            # Compiling function into a KFP component
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Preprocess component', description='')
+        _parser.add_argument("--input-csv", dest="input_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-json", dest="output_json", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parsed_args = vars(_parser.parse_args())
+
+        _outputs = preprocess_component(**_parsed_args)
+      image: kristiantamm/synthguard_public:latest
+    inputs:
+      artifacts:
+      - {name: input-component-output_csv, path: /tmp/inputs/input_csv/data}
+    outputs:
+      artifacts:
+      - {name: preprocess-component-output_json, path: /tmp/outputs/output_json/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-csv", {"inputPath": "input_csv"}, "--output-json", {"outputPath":
+          "output_json"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef preprocess_component(input_csv
+          , output_json ):\n    import synthguard.helper_functions as sd\n    #Component
+          logic\n    from synthguard.data_preprocessor import DataPreprocessor\n    input_data
+          = sd.load_data_csv(input_csv)\n    dataPreprocessor = DataPreprocessor(data=input_data)\n    metadata
+          = dataPreprocessor.extract_metadata()\n    sd.save_metadata(metadata, output_json)\n    #
+          Compiling function into a KFP component\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Preprocess
+          component'', description='''')\n_parser.add_argument(\"--input-csv\", dest=\"input_csv\",
+          type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-json\",
+          dest=\"output_json\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parsed_args = vars(_parser.parse_args())\n\n_outputs
+          = preprocess_component(**_parsed_args)\n"], "image": "kristiantamm/synthguard_public:latest"}},
+          "inputs": [{"name": "input_csv", "type": "csv"}], "name": "Preprocess component",
+          "outputs": [{"name": "output_json", "type": "json"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: privacy-report-component
+    container:
+      args: [--input-synth-csv, /tmp/inputs/input_synth_csv/data, --input-real-csv,
+        /tmp/inputs/input_real_csv/data, --input-json, /tmp/inputs/input_json/data,
+        --output-html, /tmp/outputs/output_html/data, '----output-paths', /tmp/outputs/mlpipeline_ui_metadata/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def privacy_report_component(input_synth_csv , input_real_csv , input_json, output_html )    :
+            import synthguard.helper_functions as sd
+            import json
+
+            with open(output_html, "w") as f:
+                f.write("<html><body>")  # Start the HTML document
+
+            #Component logic
+            from synthguard.privacy_report_generator import PrivacyRiskEvaluator
+            from synthguard.data_preprocessor import DataPreprocessor
+            synthetic_data = sd.load_data_csv(input_synth_csv)
+            real_data = sd.load_data_csv(input_real_csv)
+            metadata = sd.load_metadata(input_json)
+            privacyRiskEvaluator = PrivacyRiskEvaluator(real_data = real_data, synthetic_data = synthetic_data, metadata = metadata, method="realistic")
+            privacyRiskEvaluator.run_privacy_realistic()
+            privacyRiskEvaluator.plot_privacy_metrics_realistic()
+            privacyRiskEvaluator.save_plot_to_html(output_html)
+
+            #Write visualization elements into output_html file
+
+            # Read the HTML content for UI metadata
+            with open(output_html, 'r') as file:
+                html_content = file.read()
+            metadata = {
+                'outputs': [{'type': 'web-app', 'storage': 'inline', 'source': html_content}]
+            }
+
+            from collections import namedtuple
+            visualization_output = namedtuple('VisualizationOutput', ['mlpipeline_ui_metadata'])
+            return visualization_output(json.dumps(metadata))
+
+            # Compiling function into a KFP component
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Privacy report component', description='')
+        _parser.add_argument("--input-synth-csv", dest="input_synth_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-real-csv", dest="input_real_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-json", dest="input_json", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-html", dest="output_html", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("----output-paths", dest="_output_paths", type=str, nargs=1)
+        _parsed_args = vars(_parser.parse_args())
+        _output_files = _parsed_args.pop("_output_paths", [])
+
+        _outputs = privacy_report_component(**_parsed_args)
+
+        _output_serializers = [
+            str,
+
+        ]
+
+        import os
+        for idx, output_file in enumerate(_output_files):
+            try:
+                os.makedirs(os.path.dirname(output_file))
+            except OSError:
+                pass
+            with open(output_file, 'w') as f:
+                f.write(_output_serializers[idx](_outputs[idx]))
+      image: kristiantamm/synthguard_public:latest
+    inputs:
+      artifacts:
+      - {name: preprocess-component-output_json, path: /tmp/inputs/input_json/data}
+      - {name: input-component-output_csv, path: /tmp/inputs/input_real_csv/data}
+      - {name: generation-component-output_csv, path: /tmp/inputs/input_synth_csv/data}
+    outputs:
+      artifacts:
+      - {name: mlpipeline-ui-metadata, path: /tmp/outputs/mlpipeline_ui_metadata/data}
+      - {name: privacy-report-component-output_html, path: /tmp/outputs/output_html/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-synth-csv", {"inputPath": "input_synth_csv"}, "--input-real-csv",
+          {"inputPath": "input_real_csv"}, "--input-json", {"inputPath": "input_json"},
+          "--output-html", {"outputPath": "output_html"}, "----output-paths", {"outputPath":
+          "mlpipeline_ui_metadata"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef privacy_report_component(input_synth_csv
+          , input_real_csv , input_json, output_html )    :\n    import synthguard.helper_functions
+          as sd\n    import json\n\n    with open(output_html, \"w\") as f:\n        f.write(\"<html><body>\")  #
+          Start the HTML document\n\n    #Component logic\n    from synthguard.privacy_report_generator
+          import PrivacyRiskEvaluator\n    from synthguard.data_preprocessor import
+          DataPreprocessor\n    synthetic_data = sd.load_data_csv(input_synth_csv)\n    real_data
+          = sd.load_data_csv(input_real_csv)\n    metadata = sd.load_metadata(input_json)\n    privacyRiskEvaluator
+          = PrivacyRiskEvaluator(real_data = real_data, synthetic_data = synthetic_data,
+          metadata = metadata, method=\"realistic\")\n    privacyRiskEvaluator.run_privacy_realistic()\n    privacyRiskEvaluator.plot_privacy_metrics_realistic()\n    privacyRiskEvaluator.save_plot_to_html(output_html)\n\n    #Write
+          visualization elements into output_html file\n\n    # Read the HTML content
+          for UI metadata\n    with open(output_html, ''r'') as file:\n        html_content
+          = file.read()\n    metadata = {\n        ''outputs'': [{''type'': ''web-app'',
+          ''storage'': ''inline'', ''source'': html_content}]\n    }\n\n    from collections
+          import namedtuple\n    visualization_output = namedtuple(''VisualizationOutput'',
+          [''mlpipeline_ui_metadata''])\n    return visualization_output(json.dumps(metadata))\n\n    #
+          Compiling function into a KFP component\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Privacy
+          report component'', description='''')\n_parser.add_argument(\"--input-synth-csv\",
+          dest=\"input_synth_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-real-csv\",
+          dest=\"input_real_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-json\",
+          dest=\"input_json\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-html\",
+          dest=\"output_html\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\", dest=\"_output_paths\",
+          type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+          = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = privacy_report_component(**_parsed_args)\n\n_output_serializers
+          = [\n    str,\n\n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+          OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+          "image": "kristiantamm/synthguard_public:latest"}}, "inputs": [{"name":
+          "input_synth_csv", "type": "csv"}, {"name": "input_real_csv", "type": "csv"},
+          {"name": "input_json", "type": "json"}], "name": "Privacy report component",
+          "outputs": [{"name": "output_html", "type": "html"}, {"name": "mlpipeline_ui_metadata",
+          "type": "UI_metadata"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  - name: utility-report-component
+    container:
+      args: [--input-synth-csv, /tmp/inputs/input_synth_csv/data, --input-real-csv,
+        /tmp/inputs/input_real_csv/data, --input-json, /tmp/inputs/input_json/data,
+        --output-html, /tmp/outputs/output_html/data, '----output-paths', /tmp/outputs/mlpipeline_ui_metadata/data]
+      command:
+      - sh
+      - -ec
+      - |
+        program_path=$(mktemp)
+        printf "%s" "$0" > "$program_path"
+        python3 -u "$program_path" "$@"
+      - |
+        def _make_parent_dirs_and_return_path(file_path: str):
+            import os
+            os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            return file_path
+
+        def utility_report_component(input_synth_csv , input_real_csv , input_json, output_html )    :
+            import synthguard.helper_functions as sd
+            import json
+
+            with open(output_html, "w") as f:
+                f.write("<html><body>")  # Start the HTML document
+
+            #Component logic
+            from synthguard.quality_report_generator import DataQualityEvaluator
+            synthetic_data = sd.load_data_csv(input_synth_csv)
+            real_data = sd.load_data_csv(input_real_csv)
+            metadata = sd.load_metadata(input_json)
+            qualityEvaluator = DataQualityEvaluator(real_data = real_data, synthetic_data = synthetic_data, metadata = metadata, method="realistic")
+            qualityEvaluator.evaluate_quality()
+            qualityEvaluator.plot_quality_report_realistic()
+            qualityEvaluator.save_plot_to_html(output_html)
+            #Write visualization elements into output_html file
+
+            # Read the HTML content for UI metadata
+            with open(output_html, 'r') as file:
+                html_content = file.read()
+            metadata = {
+                'outputs': [{'type': 'web-app', 'storage': 'inline', 'source': html_content}]
+            }
+
+            from collections import namedtuple
+            visualization_output = namedtuple('VisualizationOutput', ['mlpipeline_ui_metadata'])
+            return visualization_output(json.dumps(metadata))
+
+            # Compiling function into a KFP component
+
+        import argparse
+        _parser = argparse.ArgumentParser(prog='Utility report component', description='')
+        _parser.add_argument("--input-synth-csv", dest="input_synth_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-real-csv", dest="input_real_csv", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--input-json", dest="input_json", type=str, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("--output-html", dest="output_html", type=_make_parent_dirs_and_return_path, required=True, default=argparse.SUPPRESS)
+        _parser.add_argument("----output-paths", dest="_output_paths", type=str, nargs=1)
+        _parsed_args = vars(_parser.parse_args())
+        _output_files = _parsed_args.pop("_output_paths", [])
+
+        _outputs = utility_report_component(**_parsed_args)
+
+        _output_serializers = [
+            str,
+
+        ]
+
+        import os
+        for idx, output_file in enumerate(_output_files):
+            try:
+                os.makedirs(os.path.dirname(output_file))
+            except OSError:
+                pass
+            with open(output_file, 'w') as f:
+                f.write(_output_serializers[idx](_outputs[idx]))
+      image: kristiantamm/synthguard_public:latest
+    inputs:
+      artifacts:
+      - {name: preprocess-component-output_json, path: /tmp/inputs/input_json/data}
+      - {name: input-component-output_csv, path: /tmp/inputs/input_real_csv/data}
+      - {name: generation-component-output_csv, path: /tmp/inputs/input_synth_csv/data}
+    outputs:
+      artifacts:
+      - {name: mlpipeline-ui-metadata, path: /tmp/outputs/mlpipeline_ui_metadata/data}
+      - {name: utility-report-component-output_html, path: /tmp/outputs/output_html/data}
+    metadata:
+      labels:
+        pipelines.kubeflow.org/kfp_sdk_version: 1.8.22
+        pipelines.kubeflow.org/pipeline-sdk-type: kfp
+        pipelines.kubeflow.org/enable_caching: "true"
+      annotations: {pipelines.kubeflow.org/component_spec: '{"implementation": {"container":
+          {"args": ["--input-synth-csv", {"inputPath": "input_synth_csv"}, "--input-real-csv",
+          {"inputPath": "input_real_csv"}, "--input-json", {"inputPath": "input_json"},
+          "--output-html", {"outputPath": "output_html"}, "----output-paths", {"outputPath":
+          "mlpipeline_ui_metadata"}], "command": ["sh", "-ec", "program_path=$(mktemp)\nprintf
+          \"%s\" \"$0\" > \"$program_path\"\npython3 -u \"$program_path\" \"$@\"\n",
+          "def _make_parent_dirs_and_return_path(file_path: str):\n    import os\n    os.makedirs(os.path.dirname(file_path),
+          exist_ok=True)\n    return file_path\n\ndef utility_report_component(input_synth_csv
+          , input_real_csv , input_json, output_html )    :\n    import synthguard.helper_functions
+          as sd\n    import json\n\n    with open(output_html, \"w\") as f:\n        f.write(\"<html><body>\")  #
+          Start the HTML document\n\n    #Component logic\n    from synthguard.quality_report_generator
+          import DataQualityEvaluator\n    synthetic_data = sd.load_data_csv(input_synth_csv)\n    real_data
+          = sd.load_data_csv(input_real_csv)\n    metadata = sd.load_metadata(input_json)\n    qualityEvaluator
+          = DataQualityEvaluator(real_data = real_data, synthetic_data = synthetic_data,
+          metadata = metadata, method=\"realistic\")\n    qualityEvaluator.evaluate_quality()\n    qualityEvaluator.plot_quality_report_realistic()\n    qualityEvaluator.save_plot_to_html(output_html)\n    #Write
+          visualization elements into output_html file\n\n    # Read the HTML content
+          for UI metadata\n    with open(output_html, ''r'') as file:\n        html_content
+          = file.read()\n    metadata = {\n        ''outputs'': [{''type'': ''web-app'',
+          ''storage'': ''inline'', ''source'': html_content}]\n    }\n\n    from collections
+          import namedtuple\n    visualization_output = namedtuple(''VisualizationOutput'',
+          [''mlpipeline_ui_metadata''])\n    return visualization_output(json.dumps(metadata))\n\n    #
+          Compiling function into a KFP component\n\nimport argparse\n_parser = argparse.ArgumentParser(prog=''Utility
+          report component'', description='''')\n_parser.add_argument(\"--input-synth-csv\",
+          dest=\"input_synth_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-real-csv\",
+          dest=\"input_real_csv\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--input-json\",
+          dest=\"input_json\", type=str, required=True, default=argparse.SUPPRESS)\n_parser.add_argument(\"--output-html\",
+          dest=\"output_html\", type=_make_parent_dirs_and_return_path, required=True,
+          default=argparse.SUPPRESS)\n_parser.add_argument(\"----output-paths\", dest=\"_output_paths\",
+          type=str, nargs=1)\n_parsed_args = vars(_parser.parse_args())\n_output_files
+          = _parsed_args.pop(\"_output_paths\", [])\n\n_outputs = utility_report_component(**_parsed_args)\n\n_output_serializers
+          = [\n    str,\n\n]\n\nimport os\nfor idx, output_file in enumerate(_output_files):\n    try:\n        os.makedirs(os.path.dirname(output_file))\n    except
+          OSError:\n        pass\n    with open(output_file, ''w'') as f:\n        f.write(_output_serializers[idx](_outputs[idx]))\n"],
+          "image": "kristiantamm/synthguard_public:latest"}}, "inputs": [{"name":
+          "input_synth_csv", "type": "csv"}, {"name": "input_real_csv", "type": "csv"},
+          {"name": "input_json", "type": "json"}], "name": "Utility report component",
+          "outputs": [{"name": "output_html", "type": "html"}, {"name": "mlpipeline_ui_metadata",
+          "type": "UI_metadata"}]}', pipelines.kubeflow.org/component_ref: '{}'}
+  arguments:
+    parameters:
+    - {name: n_rows}
+  serviceAccountName: pipeline-runner
